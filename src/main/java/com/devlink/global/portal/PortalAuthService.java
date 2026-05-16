@@ -55,11 +55,15 @@ public class PortalAuthService {
 	 */
 	public boolean authenticate(String portalId, String password) {
 		try {
+
+
 			Map<String, String> cookies = login(portalId, password);
 			/* 
 			 * user.md: 기본적으로 쿠키 3개 반환 시 성공이나,
 			 * 비밀번호 만료(exPassword) 캠페인 페이지인 경우 인증 자체는 성공한 것이므로 우회 처리 
 			 */
+
+
 			boolean success = cookies != null && (cookies.size() >= 3 || cookies.containsKey("PASS_EXPIRED_SUCCESS"));
 			log.info("[포털 인증] 최종 결과: {} / 쿠키 수: {}", success ? "성공" : "실패", cookies != null ? cookies.size() : 0);
 			return success;

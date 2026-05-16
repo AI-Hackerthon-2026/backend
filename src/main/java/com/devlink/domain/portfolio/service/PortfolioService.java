@@ -274,8 +274,9 @@ public class PortfolioService {
 
 		portfolioRepository.save(portfolio);
 
-		/* 작성자를 소유자로 참여자 등록 (myRole 사용) */
-		participantRepository.save(PortfolioParticipant.builder()
+		/* 작성자를 소유자로 참여자 등록 (myRole 사용) + 추가 참여자 일괄 저장 */
+		List<PortfolioParticipant> participants = new ArrayList<>();
+		participants.add(PortfolioParticipant.builder()
 				.portfolio(portfolio)
 				.user(author)
 				.role(request.getMyRole())
@@ -283,12 +284,11 @@ public class PortfolioService {
 				.isOwner(true)
 				.build());
 
-		/* 추가 참여자 등록 */
 		if (request.getParticipants() != null) {
 			for (ParticipantRequest p : request.getParticipants()) {
 				User participant = userRepository.findById(p.getUserId())
 						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-				participantRepository.save(PortfolioParticipant.builder()
+				participants.add(PortfolioParticipant.builder()
 						.portfolio(portfolio)
 						.user(participant)
 						.role(p.getRole())
@@ -297,6 +297,7 @@ public class PortfolioService {
 						.build());
 			}
 		}
+		participantRepository.saveAll(participants);
 
 		/* 기술스택 등록 (없으면 자동 생성) */
 		saveSkills(portfolio, request.getSkills());
@@ -334,10 +335,10 @@ public class PortfolioService {
 			throw new CustomException(ErrorCode.DUPLICATE_GITHUB_LINK);
 		}
 
-		/* GRADUATION, P_PROJECT는 참여자 필수 */
+		/* GRADUATION, P_PROJECT는 참여자 명시 시 빈 목록 불가 (null이면 기존 유지이므로 허용) */
 		if ((request.getCategory() == PortfolioCategory.GRADUATION
 				|| request.getCategory() == PortfolioCategory.P_PROJECT)
-				&& (request.getParticipants() == null || request.getParticipants().isEmpty())) {
+				&& request.getParticipants() != null && request.getParticipants().isEmpty()) {
 			throw new CustomException(ErrorCode.PARTICIPANT_REQUIRED);
 		}
 
@@ -352,17 +353,23 @@ public class PortfolioService {
 		portfolioSkillRepository.deleteAllByPortfolio(portfolio);
 		saveSkills(portfolio, request.getSkills());
 
-		/* 참여자 재등록 (소유자 제외하고 삭제 후 재등록) */
+		/* 참여자 재등록 (소유자 role은 myRole로 갱신, 나머지 삭제 후 재등록) */
 		if (request.getParticipants() != null) {
 			PortfolioParticipant ownerEntry = participantRepository.findAllByPortfolio(portfolio)
 					.stream().filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
 			Long ownerId = ownerEntry != null ? ownerEntry.getUser().getId() : null;
 			participantRepository.deleteAllByPortfolio(portfolio);
+
+			List<PortfolioParticipant> toSave = new ArrayList<>();
+
 			if (ownerEntry != null) {
-				participantRepository.save(PortfolioParticipant.builder()
+				/* myRole이 있으면 소유자 역할 갱신, 없으면 기존 역할 유지 */
+				String ownerRole = (request.getMyRole() != null && !request.getMyRole().isBlank())
+						? request.getMyRole() : ownerEntry.getRole();
+				toSave.add(PortfolioParticipant.builder()
 						.portfolio(portfolio)
 						.user(ownerEntry.getUser())
-						.role(ownerEntry.getRole())
+						.role(ownerRole)
 						.canEdit(true)
 						.isOwner(true)
 						.build());
@@ -374,7 +381,7 @@ public class PortfolioService {
 				}
 				User participant = userRepository.findById(p.getUserId())
 						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-				participantRepository.save(PortfolioParticipant.builder()
+				toSave.add(PortfolioParticipant.builder()
 						.portfolio(portfolio)
 						.user(participant)
 						.role(p.getRole())
@@ -382,6 +389,7 @@ public class PortfolioService {
 						.isOwner(false)
 						.build());
 			}
+			participantRepository.saveAll(toSave);
 		}
 
 		return getPortfolioDetail(portfolioId, userId);
@@ -429,22 +437,24 @@ public class PortfolioService {
 	}
 
 	/**
-	 * 기술스택 저장 (없으면 자동 생성 후 매핑)
+	 * 기술스택 저장 (없으면 자동 생성 후 매핑, saveAll로 일괄 저장)
 	 */
 	private void saveSkills(Portfolio portfolio, List<String> skillNames) {
 		if (skillNames == null)
 			return;
+		List<PortfolioSkill> toSave = new ArrayList<>();
 		for (String skillName : skillNames) {
 			Skill skill = skillRepository.findByName(skillName)
 					.orElseGet(() -> skillRepository.save(Skill.builder()
 							.name(skillName)
 							.category("Other")
 							.build()));
-			portfolioSkillRepository.save(PortfolioSkill.builder()
+			toSave.add(PortfolioSkill.builder()
 					.portfolio(portfolio)
 					.skill(skill)
 					.build());
 		}
+		portfolioSkillRepository.saveAll(toSave);
 	}
 
 	private PortfolioCategory parseCategory(String category) {

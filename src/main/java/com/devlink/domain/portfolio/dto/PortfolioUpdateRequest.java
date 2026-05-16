@@ -3,6 +3,7 @@ package com.devlink.domain.portfolio.dto;
 import com.devlink.domain.portfolio.entity.PortfolioCategory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
@@ -40,7 +41,7 @@ public class PortfolioUpdateRequest {
 
 	private String deploymentLink;
 
-	@NotNull(message = "기술스택을 입력해주세요.")
+	@NotEmpty(message = "기술스택을 1개 이상 입력해주세요.")
 	private List<String> skills;
 
 	@Valid
