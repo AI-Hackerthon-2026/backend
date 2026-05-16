@@ -6,14 +6,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
-/**
- * 공감 컨트롤러
- *
- * @since : 2026.05.16
- * @version : 0.0.1
- * @author : DevLink Team
- */
 @RestController
 @RequestMapping("/api/portfolios/{portfolioId}/likes")
 @RequiredArgsConstructor
@@ -22,37 +16,29 @@ public class LikeController {
 
 	private final LikeService likeService;
 
-	/**
-	 * 공감 추가 API
-	 *
-	 * @param portfolioId 포트폴리오 ID
-	 * @param userId 사용자 ID
-	 * @return 공감 성공 메시지
-	 */
+	String JsonView = "jsonView";
+
 	@PostMapping
 	@Operation(summary = "공감 추가", description = "포트폴리오에 공감을 추가합니다.")
-	public ApiResponse<Void> addLike(
+	public ModelAndView addLike(
 		@PathVariable Long portfolioId,
 		@RequestParam Long userId
 	) {
 		likeService.addLike(userId, portfolioId);
-		return ApiResponse.success("공감이 추가되었습니다.", null);
+		ModelAndView modelAndView = new ModelAndView(JsonView);
+		modelAndView.addObject("data", ApiResponse.success("공감이 추가되었습니다.", null));
+		return modelAndView;
 	}
 
-	/**
-	 * 공감 취소 API
-	 *
-	 * @param portfolioId 포트폴리오 ID
-	 * @param userId 사용자 ID
-	 * @return 공감 취소 성공 메시지
-	 */
 	@DeleteMapping
 	@Operation(summary = "공감 취소", description = "포트폴리오 공감을 취소합니다.")
-	public ApiResponse<Void> cancelLike(
+	public ModelAndView cancelLike(
 		@PathVariable Long portfolioId,
 		@RequestParam Long userId
 	) {
 		likeService.cancelLike(userId, portfolioId);
-		return ApiResponse.success("공감이 취소되었습니다.", null);
+		ModelAndView modelAndView = new ModelAndView(JsonView);
+		modelAndView.addObject("data", ApiResponse.success("공감이 취소되었습니다.", null));
+		return modelAndView;
 	}
 }
