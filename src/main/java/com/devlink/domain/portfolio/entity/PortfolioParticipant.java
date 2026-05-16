@@ -39,8 +39,8 @@ public class PortfolioParticipant {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	/** 포트폴리오에서의 역할 (예: Backend, PM) */
-	@Column(length = 100)
+	/** 포트폴리오에서의 역할 (필수, 예: Backend, PM) */
+	@Column(length = 100, nullable = false)
 	private String role;
 
 	/** 수정 권한 여부 */

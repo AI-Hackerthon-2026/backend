@@ -32,15 +32,16 @@ public class PortfolioController {
 
 	/**
 	 * 전체 목록 조회
-	 * skills 파라미터로 필터, sort로 정렬 (LATEST/LIKES)
+	 * category, skills 파라미터로 필터, sort로 정렬 (LATEST/LIKES)
 	 */
 	@GetMapping
-	@Operation(summary = "포트폴리오 목록 조회", description = "기술스택 필터 및 정렬을 적용하여 목록을 조회합니다.")
+	@Operation(summary = "포트폴리오 목록 조회", description = "커테고리 및 기술스택 필터와 정렬을 적용하여 목록을 조회합니다.")
 	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getPortfolioList(
+		@RequestParam(required = false) String category,
 		@RequestParam(required = false) List<String> skills,
 		@RequestParam(required = false, defaultValue = "LATEST") String sort) {
 		return ResponseEntity.ok(
-			ApiResponse.success("포트폴리오 목록 조회 성공", portfolioService.getPortfolioList(skills, sort)));
+			ApiResponse.success("포트폴리오 목록 조회 성공", portfolioService.getPortfolioList(category, skills, sort)));
 	}
 
 	/**
@@ -58,36 +59,22 @@ public class PortfolioController {
 	}
 
 	/**
-	 * 메인 인기 TOP 3 조회
+	 * 메인 인기 포트폴리오 TOP 3 (누적 공감 상위 3개)
 	 */
-	@GetMapping("/top")
-	@Operation(summary = "인기 TOP 3", description = "공감 수 기준 상위 3개 포트폴리오를 조회합니다.")
-	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getTop3() {
-		return ResponseEntity.ok(ApiResponse.success("TOP 3 조회 성공", portfolioService.getTop3()));
+	@GetMapping("/popular")
+	@Operation(summary = "인기 포트폴리오 TOP 3", description = "전체 누적 공감 상위 3개 포트폴리오를 조회합니다.")
+	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getPopular() {
+		return ResponseEntity.ok(ApiResponse.success("인기 포트폴리오 조회 성공", portfolioService.getPopular()));
 	}
 
 	/**
-	 * 랭킹 목록 조회 (공감 많은 순)
+	 * 래넣킹 목록 조회 (공감 많은 순, 기간 필터 지원)
 	 */
 	@GetMapping("/ranking")
-	@Operation(summary = "랭킹 목록", description = "공감 수 기준 랭킹 목록을 조회합니다.")
-	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getRanking() {
-		return ResponseEntity.ok(ApiResponse.success("랭킹 조회 성공", portfolioService.getRanking()));
-	}
-
-	/**
-	 * 시상 결과 조회 (GRADUATION 카테고리 기준 상위)
-	 */
-	@GetMapping("/awards")
-	@Operation(summary = "시상 결과", description = "졸업 프로젝트 시상 결과를 조회합니다.")
-	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getAwards() {
-		/* 졸업 카테고리 필터 + 공감 순 정렬 */
-		List<PortfolioListResponse> all = portfolioService.getPortfolioList(null, "LIKES");
-		List<PortfolioListResponse> awards = all.stream()
-			.filter(p -> p.getCategory().name().equals("GRADUATION"))
-			.limit(10)
-			.toList();
-		return ResponseEntity.ok(ApiResponse.success("시상 결과 조회 성공", awards));
+	@Operation(summary = "래넣킹 목록", description = "공감 수 기준 래넣킹 목록을 조회합니다.")
+	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getRanking(
+		@RequestParam(required = false, defaultValue = "ALL_TIME") String period) {
+		return ResponseEntity.ok(ApiResponse.success("래넣킹 조회 성공", portfolioService.getRanking(period)));
 	}
 
 	/**

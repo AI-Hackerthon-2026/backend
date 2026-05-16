@@ -31,9 +31,11 @@ public class PortfolioCreateRequest {
 	@NotBlank(message = "상세 설명을 입력해주세요.")
 	private String description;
 
+	@NotBlank(message = "대표 이미지 URL을 입력해주세요.")
 	private String thumbnailUrl;
 
-	private String imageUrl;
+	@NotBlank(message = "본인의 담당 역할을 입력해주세요.")
+	private String myRole;
 
 	@NotBlank(message = "GitHub 링크를 입력해주세요.")
 	private String githubLink;

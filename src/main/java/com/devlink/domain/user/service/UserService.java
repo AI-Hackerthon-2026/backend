@@ -1,6 +1,7 @@
 package com.devlink.domain.user.service;
 
 import com.devlink.domain.user.dto.UserProfileResponse;
+import com.devlink.domain.user.dto.UserSearchResponse;
 import com.devlink.domain.user.dto.UserUpdateRequest;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
@@ -9,6 +10,8 @@ import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 사용자 서비스
@@ -48,6 +51,25 @@ public class UserService {
 		User user = findUserById(userId);
 		user.updateProfile(request.getName(), request.getGrade(), request.getGithubLink());
 		return UserProfileResponse.from(user);
+	}
+
+	/**
+	 * 사용자 검색 (참여자 추가용)
+	 * 이름 또는 학번으로 LIKE 검색, 본인은 결과에서 제외
+	 *
+	 * @param q 검색어 (이름 또는 학번 일부)
+	 * @param requesterId 요청자 ID (결과에서 본인 제외)
+	 * @return 사용자 검색 결과 목록
+	 */
+	@Transactional(readOnly = true)
+	public List<UserSearchResponse> searchUsers(String q, Long requesterId) {
+		if (q == null || q.isBlank()) {
+			throw new CustomException(ErrorCode.INVALID_INPUT);
+		}
+		return userRepository.searchByNameOrStudentId(q.trim(), requesterId)
+			.stream()
+			.map(UserSearchResponse::from)
+			.toList();
 	}
 
 	/**

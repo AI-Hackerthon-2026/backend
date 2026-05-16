@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 /**
@@ -19,6 +20,7 @@ import lombok.Getter;
 public class RegisterRequest {
 
 	@NotBlank(message = "학번은 필수 입력 항목입니다.")
+	@Size(min = 9, max = 9, message = "학번은 9자리 숫자여야 합니다.")
 	private String studentId;
 
 	@NotBlank(message = "이름은 필수 입력 항목입니다.")

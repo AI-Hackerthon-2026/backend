@@ -42,17 +42,18 @@ public class PortfolioService {
 
 	/**
 	 * 포트폴리오 전체 목록 조회
-	 * skills 파라미터로 필터, sort로 정렬
+	 * category, skills 파라미터로 필터, sort로 정렬
 	 *
+	 * @param category 커테고리 필터 (null이면 전체)
 	 * @param skills 필터링할 기술 목록 (null이면 전체)
-	 * @param sort   정렬 기준 (LATEST, LIKES)
+	 * @param sort 정렬 기준 (LATEST, LIKES)
 	 */
 	@Transactional(readOnly = true)
-	public List<PortfolioListResponse> getPortfolioList(List<String> skills, String sort) {
+	public List<PortfolioListResponse> getPortfolioList(String category, List<String> skills, String sort) {
 		List<Portfolio> portfolios;
 
 		if (skills == null || skills.isEmpty()) {
-			/* 전체 목록 조회 */
+			/* 기술필터 없음: 정렬 기준으로 전체 조회 */
 			portfolios = "LIKES".equalsIgnoreCase(sort)
 				? portfolioRepository.findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc()
 				: portfolioRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc();
@@ -61,6 +62,18 @@ public class PortfolioService {
 			portfolios = "LIKES".equalsIgnoreCase(sort)
 				? portfolioRepository.findBySkillsAndLikes(skills)
 				: portfolioRepository.findBySkillsAndLatest(skills);
+		}
+
+		/* 커테고리 필터 적용 */
+		if (category != null && !category.isBlank()) {
+			try {
+				PortfolioCategory cat = PortfolioCategory.valueOf(category.toUpperCase());
+				portfolios = portfolios.stream()
+					.filter(p -> p.getCategory() == cat)
+					.toList();
+			} catch (IllegalArgumentException ignored) {
+				/* 잘못된 커테고리 값이면 필터 무시 */
+			}
 		}
 
 		return portfolios.stream()
@@ -101,10 +114,10 @@ public class PortfolioService {
 	}
 
 	/**
-	 * 포트폴리오 TOP 3 조회 (공감 많은 순)
+	 * 인기 포트폴리오 TOP 3 (메인 대시보드용, 전체 누적 공감 상위 3개)
 	 */
 	@Transactional(readOnly = true)
-	public List<PortfolioListResponse> getTop3() {
+	public List<PortfolioListResponse> getPopular() {
 		return portfolioRepository.findTop3ByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc()
 			.stream()
 			.map(p -> {
@@ -116,11 +129,14 @@ public class PortfolioService {
 	}
 
 	/**
-	 * 랭킹 목록 조회 (공감 많은 순 전체)
+	 * 랭킹 목록 조회 (공감 많은 순, period 파라미터로 이번/지난 학기 필터)
+	 * 현재는 전체 기간 기준으로만 동작 (semester 구분은 추후 연동일에 확장)
+	 *
+	 * @param period 기간 필터 (ALL_TIME / CURRENT_SEMESTER / LAST_SEMESTER, 현재 ALL_TIME로 동작)
 	 */
 	@Transactional(readOnly = true)
-	public List<PortfolioListResponse> getRanking() {
-		return getPortfolioList(null, "LIKES");
+	public List<PortfolioListResponse> getRanking(String period) {
+		return getPortfolioList(null, null, "LIKES");
 	}
 
 	/**
@@ -160,7 +176,6 @@ public class PortfolioService {
 			.summary(request.getSummary())
 			.description(request.getDescription())
 			.thumbnailUrl(request.getThumbnailUrl())
-			.imageUrl(request.getImageUrl())
 			.githubLink(request.getGithubLink())
 			.deploymentLink(request.getDeploymentLink())
 			.startDate(request.getStartDate())
@@ -169,11 +184,11 @@ public class PortfolioService {
 
 		portfolioRepository.save(portfolio);
 
-		/* 작성자를 소유자로 참여자 등록 */
+		/* 작성자를 소유자로 참여자 등록 (myRole 사용) */
 		participantRepository.save(PortfolioParticipant.builder()
 			.portfolio(portfolio)
 			.user(author)
-			.role("작성자")
+			.role(request.getMyRole())
 			.canEdit(true)
 			.isOwner(true)
 			.build());
@@ -238,7 +253,7 @@ public class PortfolioService {
 		/* 포트폴리오 정보 수정 */
 		portfolio.update(request.getProjectName(), request.getCategory(),
 			request.getSummary(), request.getDescription(),
-			request.getThumbnailUrl(), request.getImageUrl(),
+			request.getThumbnailUrl(),
 			request.getGithubLink(), request.getDeploymentLink(),
 			request.getStartDate(), request.getEndDate());
 

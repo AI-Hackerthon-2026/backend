@@ -3,6 +3,7 @@ package com.devlink.domain.user.controller;
 import com.devlink.domain.portfolio.dto.PortfolioListResponse;
 import com.devlink.domain.portfolio.service.PortfolioService;
 import com.devlink.domain.user.dto.UserProfileResponse;
+import com.devlink.domain.user.dto.UserSearchResponse;
 import com.devlink.domain.user.dto.UserUpdateRequest;
 import com.devlink.domain.user.service.UserService;
 import com.devlink.global.common.ApiResponse;
@@ -68,5 +69,19 @@ public class UserController {
 		Long userId = (Long) authentication.getPrincipal();
 		return ResponseEntity.ok(
 			ApiResponse.success("내 포트폴리오 목록 조회 성공", portfolioService.getMyPortfolios(userId)));
+	}
+
+	/**
+	 * 사용자 검색 (참여자 추가용)
+	 * 이름 또는 학번으로 검색, 본인 제외
+	 */
+	@GetMapping("/search")
+	@Operation(summary = "사용자 검색", description = "이름 또는 학번으로 사용자를 검색합니다.")
+	public ResponseEntity<ApiResponse<List<UserSearchResponse>>> searchUsers(
+		@RequestParam String q,
+		Authentication authentication) {
+		Long userId = (Long) authentication.getPrincipal();
+		return ResponseEntity.ok(
+			ApiResponse.success("사용자 검색 성공", userService.searchUsers(q, userId)));
 	}
 }

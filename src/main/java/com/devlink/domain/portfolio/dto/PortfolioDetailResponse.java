@@ -28,7 +28,6 @@ public class PortfolioDetailResponse {
 	private String summary;
 	private String description;
 	private String thumbnailUrl;
-	private String imageUrl;
 	private String githubLink;
 	private String deploymentLink;
 	private int likeCount;
@@ -74,7 +73,6 @@ public class PortfolioDetailResponse {
 			.summary(portfolio.getSummary())
 			.description(portfolio.getDescription())
 			.thumbnailUrl(portfolio.getThumbnailUrl())
-			.imageUrl(portfolio.getImageUrl())
 			.githubLink(portfolio.getGithubLink())
 			.deploymentLink(portfolio.getDeploymentLink())
 			.likeCount(portfolio.getLikeCount())

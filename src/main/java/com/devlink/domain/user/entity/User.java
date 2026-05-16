@@ -38,8 +38,8 @@ public class User {
 	@Column(name = "portal_id", nullable = false, unique = true, length = 50)
 	private String portalId;
 
-	/** 학번 (중복 불가, 최초 등록 시 입력) */
-	@Column(name = "student_id", unique = true, length = 20)
+	/** 학번 (9자리 숫자, 필수, 중복 불가) */
+	@Column(name = "student_id", nullable = false, unique = true, length = 9)
 	private String studentId;
 
 	/** 학년 (1~4학년) */

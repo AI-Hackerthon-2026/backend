@@ -54,13 +54,9 @@ public class Portfolio {
 	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String description;
 
-	/** 대표 이미지 URL */
-	@Column(name = "thumbnail_url", length = 500)
+	/** 대표 이미지 URL (필수) */
+	@Column(name = "thumbnail_url", nullable = false, length = 500)
 	private String thumbnailUrl;
-
-	/** 실행화면/설계서 이미지 URL */
-	@Column(name = "image_url", length = 500)
-	private String imageUrl;
 
 	/** GitHub 저장소 링크 (필수, 중복 불가) */
 	@Column(name = "github_link", nullable = false, unique = true, length = 300)
@@ -97,7 +93,7 @@ public class Portfolio {
 	@Builder
 	public Portfolio(User user, String projectName, PortfolioCategory category,
 			String summary, String description, String thumbnailUrl,
-			String imageUrl, String githubLink, String deploymentLink,
+			String githubLink, String deploymentLink,
 			LocalDate startDate, LocalDate endDate) {
 		this.user = user;
 		this.projectName = projectName;
@@ -105,7 +101,6 @@ public class Portfolio {
 		this.summary = summary;
 		this.description = description;
 		this.thumbnailUrl = thumbnailUrl;
-		this.imageUrl = imageUrl;
 		this.githubLink = githubLink;
 		this.deploymentLink = deploymentLink;
 		this.startDate = startDate;
@@ -114,7 +109,7 @@ public class Portfolio {
 
 	/** 포트폴리오 정보 수정 */
 	public void update(String projectName, PortfolioCategory category, String summary,
-			String description, String thumbnailUrl, String imageUrl,
+			String description, String thumbnailUrl,
 			String githubLink, String deploymentLink,
 			LocalDate startDate, LocalDate endDate) {
 		this.projectName = projectName;
@@ -122,7 +117,6 @@ public class Portfolio {
 		this.summary = summary;
 		this.description = description;
 		this.thumbnailUrl = thumbnailUrl;
-		this.imageUrl = imageUrl;
 		this.githubLink = githubLink;
 		this.deploymentLink = deploymentLink;
 		this.startDate = startDate;
