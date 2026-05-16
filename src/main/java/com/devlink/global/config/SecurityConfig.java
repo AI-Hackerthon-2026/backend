@@ -47,7 +47,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/portfolios/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/skills/**").permitAll()
-				.requestMatchers("/image/**").permitAll()
+				.requestMatchers("/images/**").permitAll()
 				.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
 				.requestMatchers("/h2-console/**").permitAll()
 				// 나머지는 인증 필요
