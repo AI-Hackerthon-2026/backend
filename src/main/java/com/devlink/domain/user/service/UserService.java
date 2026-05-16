@@ -54,10 +54,12 @@ public class UserService {
 			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
 		}
 		User user = findUserById(userId);
-		// null이면 기존 값 유지, 빈 문자열이면 초기화, 값이 있으면 업데이트
+		/* null인 필드는 기존 값 유지 (PATCH 방식) */
+		String newName = request.getName() != null ? request.getName() : user.getName();
+		Integer newGrade = request.getGrade() != null ? request.getGrade() : user.getGrade();
 		String newGithubLink = (githubLink == null) ? user.getGithubLink()
 			: (githubLink.isBlank() ? null : githubLink);
-		user.updateProfile(request.getName(), request.getGrade(), newGithubLink);
+		user.updateProfile(newName, newGrade, newGithubLink);
 		return UserProfileResponse.from(user);
 	}
 

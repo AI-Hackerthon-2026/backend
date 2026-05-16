@@ -79,13 +79,17 @@ public class PortfolioService {
 
 		Page<Portfolio> portfolioPage;
 		if (skillNames.isEmpty()) {
-			portfolioPage = portfolioCategory == null
-					? portfolioRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc(pageable)
-					: "LIKES".equalsIgnoreCase(sort)
-							? portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(
-									portfolioCategory, pageable)
-							: portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(
-									portfolioCategory, pageable);
+			if (portfolioCategory == null) {
+				portfolioPage = "LIKES".equalsIgnoreCase(sort)
+						? portfolioRepository.findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(pageable)
+						: portfolioRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc(pageable);
+			} else {
+				portfolioPage = "LIKES".equalsIgnoreCase(sort)
+						? portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(
+								portfolioCategory, pageable)
+						: portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(
+								portfolioCategory, pageable);
+			}
 		} else {
 			portfolioPage = "LIKES".equalsIgnoreCase(sort)
 					? portfolioRepository.findBySkillsAndLikes(portfolioCategory, skillNames, pageable)
@@ -286,6 +290,10 @@ public class PortfolioService {
 
 		if (request.getParticipants() != null) {
 			for (ParticipantRequest p : request.getParticipants()) {
+				/* 작성자가 참여자 목록에 포함된 경우 중복 등록 방지 */
+				if (authorId.equals(p.getUserId())) {
+					continue;
+				}
 				User participant = userRepository.findById(p.getUserId())
 						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 				participants.add(PortfolioParticipant.builder()
@@ -353,17 +361,17 @@ public class PortfolioService {
 		portfolioSkillRepository.deleteAllByPortfolio(portfolio);
 		saveSkills(portfolio, request.getSkills());
 
-		/* 참여자 재등록 (소유자 role은 myRole로 갱신, 나머지 삭제 후 재등록) */
+		/* 참여자 처리: participants가 있으면 재등록, null이면 소유자 역할만 myRole로 갱신 */
+		List<PortfolioParticipant> currentParticipants = participantRepository.findAllByPortfolio(portfolio);
+		PortfolioParticipant ownerEntry = currentParticipants.stream()
+				.filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
+		Long ownerId = ownerEntry != null ? ownerEntry.getUser().getId() : null;
+
 		if (request.getParticipants() != null) {
-			PortfolioParticipant ownerEntry = participantRepository.findAllByPortfolio(portfolio)
-					.stream().filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
-			Long ownerId = ownerEntry != null ? ownerEntry.getUser().getId() : null;
+			/* 참여자 목록 명시 → 전체 재등록 */
 			participantRepository.deleteAllByPortfolio(portfolio);
-
 			List<PortfolioParticipant> toSave = new ArrayList<>();
-
 			if (ownerEntry != null) {
-				/* myRole이 있으면 소유자 역할 갱신, 없으면 기존 역할 유지 */
 				String ownerRole = (request.getMyRole() != null && !request.getMyRole().isBlank())
 						? request.getMyRole() : ownerEntry.getRole();
 				toSave.add(PortfolioParticipant.builder()
@@ -375,7 +383,6 @@ public class PortfolioService {
 						.build());
 			}
 			for (ParticipantRequest p : request.getParticipants()) {
-				/* 소유자가 participants에 포함된 경우 중복 등록 방지 */
 				if (ownerId != null && ownerId.equals(p.getUserId())) {
 					continue;
 				}
@@ -389,6 +396,27 @@ public class PortfolioService {
 						.isOwner(false)
 						.build());
 			}
+			participantRepository.saveAll(toSave);
+		} else if (request.getMyRole() != null && !request.getMyRole().isBlank() && ownerEntry != null) {
+			/* 참여자 목록 없이 myRole만 제공 → 소유자 역할만 갱신 (삭제 후 재등록) */
+			participantRepository.deleteAllByPortfolio(portfolio);
+			List<PortfolioParticipant> toSave = new ArrayList<>();
+			toSave.add(PortfolioParticipant.builder()
+					.portfolio(portfolio)
+					.user(ownerEntry.getUser())
+					.role(request.getMyRole())
+					.canEdit(true)
+					.isOwner(true)
+					.build());
+			currentParticipants.stream()
+					.filter(p -> !p.isOwner())
+					.forEach(p -> toSave.add(PortfolioParticipant.builder()
+							.portfolio(portfolio)
+							.user(p.getUser())
+							.role(p.getRole())
+							.canEdit(p.isCanEdit())
+							.isOwner(false)
+							.build()));
 			participantRepository.saveAll(toSave);
 		}
 
@@ -428,6 +456,7 @@ public class PortfolioService {
 		return participantRepository.findAllByUser(user).stream()
 				.map(PortfolioParticipant::getPortfolio)
 				.filter(p -> !p.isDeleted())
+				.sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
 				.map(p -> {
 					List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
 					List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
