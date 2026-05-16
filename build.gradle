@@ -46,11 +46,8 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
-	// H2 In-Memory DB (개발용)
-	runtimeOnly 'com.h2database:h2'
-
-	// MySQL (운영용 - properties 교체 시 활성화)
-	runtimeOnly 'com.mysql:mysql-connector-j'
+	// PostgreSQL
+	runtimeOnly 'org.postgresql:postgresql'
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
