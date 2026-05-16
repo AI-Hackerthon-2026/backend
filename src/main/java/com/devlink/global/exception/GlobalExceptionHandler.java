@@ -30,6 +30,9 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(CustomException.class)
 	public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
 		ErrorCode errorCode = e.getErrorCode();
+		if (errorCode.getHttpStatus().is5xxServerError()) {
+			log.error("[서버 오류] {}: {}", errorCode.name(), errorCode.getMessage());
+		}
 		return ResponseEntity
 			.status(errorCode.getHttpStatus())
 			.body(ApiResponse.fail(errorCode.getMessage()));

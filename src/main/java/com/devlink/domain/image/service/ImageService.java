@@ -2,6 +2,8 @@ package com.devlink.domain.image.service;
 
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +25,8 @@ import java.util.UUID;
  */
 @Service
 public class ImageService {
+
+	private static final Logger log = LoggerFactory.getLogger(ImageService.class);
 
 	private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
 	private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
@@ -54,6 +58,7 @@ public class ImageService {
 			return "/image/" + uniqueFilename;
 
 		} catch (IOException e) {
+			log.error("[이미지 업로드 실패] uploadPath={}, error={}", UPLOAD_PATH, e.getMessage(), e);
 			throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
 		}
 	}
