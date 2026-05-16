@@ -39,7 +39,7 @@ public class RecruitmentService {
 	@Transactional
 	public RecruitmentResponseDto createRecruitment(RecruitmentRequestDto requestDto) {
 		User user = userRepository.findById(requestDto.getUserId())
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		Recruitment recruitment = Recruitment.builder()
 			.title(requestDto.getTitle())
@@ -75,7 +75,7 @@ public class RecruitmentService {
 	 */
 	public RecruitmentResponseDto getRecruitmentById(Long recruitmentId) {
 		Recruitment recruitment = recruitmentRepository.findById(recruitmentId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		return RecruitmentResponseDto.from(recruitment);
 	}
@@ -90,10 +90,23 @@ public class RecruitmentService {
 	@Transactional
 	public RecruitmentResponseDto updateStatus(Long recruitmentId, RecruitmentStatus status) {
 		Recruitment recruitment = recruitmentRepository.findById(recruitmentId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		recruitment.updateStatus(status);
 
 		return RecruitmentResponseDto.from(recruitment);
+	}
+
+	/**
+	 * 모집 글 삭제
+	 *
+	 * @param recruitmentId 모집 글 ID
+	 */
+	@Transactional
+	public void deleteRecruitment(Long recruitmentId) {
+		Recruitment recruitment = recruitmentRepository.findById(recruitmentId)
+			.orElseThrow(CustomException::notFound);
+
+		recruitmentRepository.delete(recruitment);
 	}
 }

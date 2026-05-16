@@ -79,4 +79,17 @@ public class RecruitmentController {
 	) {
 		return ApiResponse.success("모집 상태가 변경되었습니다.", recruitmentService.updateStatus(recruitmentId, status));
 	}
+
+	/**
+	 * 모집 글 삭제 API
+	 *
+	 * @param recruitmentId 모집 글 ID
+	 * @return 삭제 성공 메시지
+	 */
+	@DeleteMapping("/{recruitmentId}")
+	@Operation(summary = "모집 글 삭제", description = "모집 글을 삭제합니다.")
+	public ApiResponse<Void> deleteRecruitment(@PathVariable Long recruitmentId) {
+		recruitmentService.deleteRecruitment(recruitmentId);
+		return ApiResponse.success("모집 글이 삭제되었습니다.", null);
+	}
 }

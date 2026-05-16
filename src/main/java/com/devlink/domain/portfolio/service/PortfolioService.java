@@ -38,7 +38,7 @@ public class PortfolioService {
 	@Transactional
 	public PortfolioResponseDto createPortfolio(PortfolioRequestDto requestDto) {
 		User user = userRepository.findById(requestDto.getUserId())
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		Portfolio portfolio = Portfolio.builder()
 			.title(requestDto.getTitle())
@@ -78,7 +78,7 @@ public class PortfolioService {
 	 */
 	public PortfolioResponseDto getPortfolioById(Long portfolioId) {
 		Portfolio portfolio = portfolioRepository.findById(portfolioId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		return PortfolioResponseDto.from(portfolio);
 	}
@@ -103,7 +103,7 @@ public class PortfolioService {
 	@Transactional
 	public void deletePortfolio(Long portfolioId) {
 		Portfolio portfolio = portfolioRepository.findById(portfolioId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		portfolioRepository.delete(portfolio);
 	}

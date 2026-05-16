@@ -39,14 +39,14 @@ public class LikeService {
 	public void addLike(Long userId, Long portfolioId) {
 		/* 중복 공감 방지 */
 		if (likeRepository.existsByUserIdAndPortfolioId(userId, portfolioId)) {
-			throw CustomException.ALREADY_LIKED;
+			throw CustomException.alreadyLiked();
 		}
 
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		Portfolio portfolio = portfolioRepository.findById(portfolioId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		Like like = Like.builder()
 			.user(user)
@@ -61,6 +61,7 @@ public class LikeService {
 
 	/**
 	 * 포트폴리오 공감 취소
+	 * Like 엔티티 내부의 portfolio를 직접 사용 → 별도 DB 조회 제거
 	 *
 	 * @param userId 사용자 ID
 	 * @param portfolioId 포트폴리오 ID
@@ -68,14 +69,11 @@ public class LikeService {
 	@Transactional
 	public void cancelLike(Long userId, Long portfolioId) {
 		Like like = likeRepository.findByUserIdAndPortfolioId(userId, portfolioId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
-		Portfolio portfolio = portfolioRepository.findById(portfolioId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+		/* like 안의 portfolio 직접 사용 — 중복 DB 조회 제거 */
+		like.getPortfolio().decreaseLikeCount();
 
 		likeRepository.delete(like);
-
-		/* 포트폴리오 공감 수 감소 */
-		portfolio.decreaseLikeCount();
 	}
 }

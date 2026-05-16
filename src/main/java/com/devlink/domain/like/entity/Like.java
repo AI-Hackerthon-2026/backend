@@ -2,12 +2,9 @@ package com.devlink.domain.like.entity;
 
 import com.devlink.domain.portfolio.entity.Portfolio;
 import com.devlink.domain.user.entity.User;
+import com.devlink.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 공감(좋아요) 엔티티
@@ -28,8 +25,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@EntityListeners(AuditingEntityListener.class)
-public class Like {
+public class Like extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,9 +40,4 @@ public class Like {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "portfolio_id", nullable = false)
 	private Portfolio portfolio;
-
-	/** 공감 일시 */
-	@CreatedDate
-	@Column(updatable = false)
-	private LocalDateTime createdAt;
 }

@@ -56,7 +56,7 @@ public class UserService {
 	 */
 	public UserResponseDto getUserById(Long userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> CustomException.NOT_FOUND);
+			.orElseThrow(CustomException::notFound);
 
 		return UserResponseDto.from(user);
 	}
