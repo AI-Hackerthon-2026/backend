@@ -1,14 +1,19 @@
 package com.devlink.global.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+
+import java.util.Map;
 
 /**
  * Spring Security 설정 클래스
@@ -22,6 +27,8 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -48,13 +55,33 @@ public class SecurityConfig {
 			.headers(headers ->
 				headers.frameOptions(frame -> frame.sameOrigin()))
 
+			// 미인증 접근 → 401 JSON 응답
+			.exceptionHandling(ex -> ex
+				.authenticationEntryPoint((request, response, authException) -> {
+					response.setStatus(HttpStatus.UNAUTHORIZED.value());
+					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+					response.getWriter().write(objectMapper.writeValueAsString(
+						Map.of("success", false, "message", "로그인이 필요한 서비스입니다.", "data", null)));
+				})
+				.accessDeniedHandler((request, response, accessDeniedException) -> {
+					response.setStatus(HttpStatus.FORBIDDEN.value());
+					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+					response.getWriter().write(objectMapper.writeValueAsString(
+						Map.of("success", false, "message", "접근 권한이 없습니다.", "data", null)));
+				}))
+
 			// 로그아웃 설정
 			.logout(logout -> logout
 				.logoutUrl("/api/auth/logout")
 				.invalidateHttpSession(true)
 				.clearAuthentication(true)
 				.deleteCookies("JSESSIONID")
-				.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()));
+				.logoutSuccessHandler((request, response, authentication) -> {
+					response.setStatus(HttpStatus.OK.value());
+					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+					response.getWriter().write(objectMapper.writeValueAsString(
+						Map.of("success", true, "message", "로그아웃되었습니다.", "data", null)));
+				}));
 
 		return http.build();
 	}
