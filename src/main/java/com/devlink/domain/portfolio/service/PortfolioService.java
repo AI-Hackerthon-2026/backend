@@ -14,7 +14,6 @@ import com.devlink.domain.skill.repository.SkillRepository;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
 import com.devlink.global.common.PageResponse;
-import com.devlink.global.common.ValidationUtils;
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -241,15 +240,14 @@ public class PortfolioService {
 		User author = userRepository.findById(authorId)
 				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-		validatePortfolioRequest(request);
-
 		/* 날짜 유효성 검사 */
 		if (request.getEndDate().isBefore(request.getStartDate())) {
 			throw new CustomException(ErrorCode.INVALID_DATE_RANGE);
 		}
 
-		/* GitHub 링크 중복 확인 */
-		if (portfolioRepository.existsByGithubLinkAndIsDeletedFalse(request.getGithubLink())) {
+		/* GitHub 링크 중복 확인 (null이면 생략) */
+		if (request.getGithubLink() != null
+				&& portfolioRepository.existsByGithubLinkAndIsDeletedFalse(request.getGithubLink())) {
 			throw new CustomException(ErrorCode.DUPLICATE_GITHUB_LINK);
 		}
 
@@ -324,16 +322,15 @@ public class PortfolioService {
 			throw new CustomException(ErrorCode.PORTFOLIO_ACCESS_DENIED);
 		}
 
-		validatePortfolioRequest(request);
-
 		/* 날짜 유효성 검사 */
 		if (request.getEndDate().isBefore(request.getStartDate())) {
 			throw new CustomException(ErrorCode.INVALID_DATE_RANGE);
 		}
 
-		/* GitHub 링크 중복 확인 (자기 자신 제외) */
-		if (portfolioRepository.existsByGithubLinkAndIsDeletedFalseAndIdNot(
-				request.getGithubLink(), portfolioId)) {
+		/* GitHub 링크 중복 확인 (null이면 생략, 자기 자신 제외) */
+		if (request.getGithubLink() != null
+				&& portfolioRepository.existsByGithubLinkAndIsDeletedFalseAndIdNot(
+						request.getGithubLink(), portfolioId)) {
 			throw new CustomException(ErrorCode.DUPLICATE_GITHUB_LINK);
 		}
 
@@ -359,6 +356,7 @@ public class PortfolioService {
 		if (request.getParticipants() != null) {
 			PortfolioParticipant ownerEntry = participantRepository.findAllByPortfolio(portfolio)
 					.stream().filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
+			Long ownerId = ownerEntry != null ? ownerEntry.getUser().getId() : null;
 			participantRepository.deleteAllByPortfolio(portfolio);
 			if (ownerEntry != null) {
 				participantRepository.save(PortfolioParticipant.builder()
@@ -370,6 +368,10 @@ public class PortfolioService {
 						.build());
 			}
 			for (ParticipantRequest p : request.getParticipants()) {
+				/* 소유자가 participants에 포함된 경우 중복 등록 방지 */
+				if (ownerId != null && ownerId.equals(p.getUserId())) {
+					continue;
+				}
 				User participant = userRepository.findById(p.getUserId())
 						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 				participantRepository.save(PortfolioParticipant.builder()
@@ -442,36 +444,6 @@ public class PortfolioService {
 					.portfolio(portfolio)
 					.skill(skill)
 					.build());
-		}
-	}
-
-	private void validatePortfolioRequest(PortfolioCreateRequest request) {
-		if (!ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
-			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
-		}
-
-		if (!ValidationUtils.isValidUrl(request.getThumbnailUrl())) {
-			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
-		}
-
-		if (request.getDeploymentLink() != null && !request.getDeploymentLink().isBlank()
-				&& !ValidationUtils.isValidUrl(request.getDeploymentLink())) {
-			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
-		}
-	}
-
-	private void validatePortfolioRequest(PortfolioUpdateRequest request) {
-		if (!ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
-			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
-		}
-
-		if (!ValidationUtils.isValidUrl(request.getThumbnailUrl())) {
-			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
-		}
-
-		if (request.getDeploymentLink() != null && !request.getDeploymentLink().isBlank()
-				&& !ValidationUtils.isValidUrl(request.getDeploymentLink())) {
-			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
 		}
 	}
 

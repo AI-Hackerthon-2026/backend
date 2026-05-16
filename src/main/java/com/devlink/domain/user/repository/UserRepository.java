@@ -24,6 +24,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	boolean existsByStudentId(String studentId);
 
 	/** 이름 또는 학번으로 사용자 검색 (LIKE 검색, 본인 제외) */
-	@Query("SELECT u FROM User u WHERE (u.name LIKE %:q% OR u.studentId LIKE %:q%) AND u.id <> :excludeUserId")
-	List<User> searchByNameOrStudentId(@Param("q") String q, @Param("excludeUserId") Long excludeUserId);
+	@Query("SELECT u FROM User u WHERE (u.name LIKE %:keyword% OR u.studentId LIKE %:keyword%) AND u.id <> :excludeUserId")
+	List<User> searchByNameOrStudentId(@Param("keyword") String keyword, @Param("excludeUserId") Long excludeUserId);
 }

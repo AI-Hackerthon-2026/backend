@@ -4,6 +4,9 @@ import com.devlink.domain.portfolio.entity.Portfolio;
 import com.devlink.domain.portfolio.entity.PortfolioParticipant;
 import com.devlink.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +35,8 @@ public interface PortfolioParticipantRepository extends JpaRepository<PortfolioP
 	/** 소유자 여부 확인 */
 	boolean existsByPortfolioAndUserAndIsOwnerTrue(Portfolio portfolio, User user);
 
-	/** 포트폴리오 참여자 전체 삭제 (포트폴리오 삭제 시) */
-	void deleteAllByPortfolio(Portfolio portfolio);
+	/** 포트폴리오 참여자 전체 삭제 */
+	@Modifying
+	@Query("DELETE FROM PortfolioParticipant pp WHERE pp.portfolio = :portfolio")
+	void deleteAllByPortfolio(@Param("portfolio") Portfolio portfolio);
 }

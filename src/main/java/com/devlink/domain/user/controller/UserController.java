@@ -78,10 +78,10 @@ public class UserController {
 	@GetMapping("/search")
 	@Operation(summary = "사용자 검색", description = "이름 또는 학번으로 사용자를 검색합니다.")
 	public ResponseEntity<ApiResponse<List<UserSearchResponse>>> searchUsers(
-		@RequestParam String q,
+		@RequestParam String keyword,
 		Authentication authentication) {
 		Long userId = (Long) authentication.getPrincipal();
 		return ResponseEntity.ok(
-			ApiResponse.success("사용자 검색 성공", userService.searchUsers(q, userId)));
+			ApiResponse.success("사용자 검색 성공", userService.searchUsers(keyword, userId)));
 	}
 }

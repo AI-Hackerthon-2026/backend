@@ -54,12 +54,12 @@ public class Portfolio {
 	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String description;
 
-	/** 대표 이미지 URL (필수) */
-	@Column(name = "thumbnail_url", nullable = false, length = 500)
+	/** 대표 이미지 URL (선택) */
+	@Column(name = "thumbnail_url", length = 500)
 	private String thumbnailUrl;
 
-	/** GitHub 저장소 링크 (필수, 중복 불가) */
-	@Column(name = "github_link", nullable = false, unique = true, length = 300)
+	/** GitHub 저장소 링크 (선택, 중복 불가) */
+	@Column(name = "github_link", unique = true, length = 300)
 	private String githubLink;
 
 	/** 배포 링크 (선택) */

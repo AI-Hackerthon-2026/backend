@@ -49,12 +49,15 @@ public class UserService {
 	 */
 	@Transactional
 	public UserProfileResponse updateMyProfile(Long userId, UserUpdateRequest request) {
-		if (request.getGithubLink() != null && !request.getGithubLink().isBlank()
-				&& !ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
+		String githubLink = request.getGithubLink();
+		if (githubLink != null && !githubLink.isBlank() && !ValidationUtils.isValidGitHubLink(githubLink)) {
 			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
 		}
 		User user = findUserById(userId);
-		user.updateProfile(request.getName(), request.getGrade(), request.getGithubLink());
+		// null이면 기존 값 유지, 빈 문자열이면 초기화, 값이 있으면 업데이트
+		String newGithubLink = (githubLink == null) ? user.getGithubLink()
+			: (githubLink.isBlank() ? null : githubLink);
+		user.updateProfile(request.getName(), request.getGrade(), newGithubLink);
 		return UserProfileResponse.from(user);
 	}
 
@@ -67,11 +70,11 @@ public class UserService {
 	 * @return 사용자 검색 결과 목록
 	 */
 	@Transactional(readOnly = true)
-	public List<UserSearchResponse> searchUsers(String q, Long requesterId) {
-		if (q == null || q.isBlank()) {
+	public List<UserSearchResponse> searchUsers(String keyword, Long requesterId) {
+		if (keyword == null || keyword.isBlank()) {
 			throw new CustomException(ErrorCode.INVALID_INPUT);
 		}
-		return userRepository.searchByNameOrStudentId(q.trim(), requesterId)
+		return userRepository.searchByNameOrStudentId(keyword.trim(), requesterId)
 				.stream()
 				.map(UserSearchResponse::from)
 				.toList();
