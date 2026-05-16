@@ -3,6 +3,9 @@ package com.devlink.domain.skill.repository;
 import com.devlink.domain.portfolio.entity.Portfolio;
 import com.devlink.domain.skill.entity.PortfolioSkill;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -17,5 +20,7 @@ public interface PortfolioSkillRepository extends JpaRepository<PortfolioSkill, 
 
 	List<PortfolioSkill> findAllByPortfolio(Portfolio portfolio);
 
-	void deleteAllByPortfolio(Portfolio portfolio);
+	@Modifying
+	@Query("DELETE FROM PortfolioSkill ps WHERE ps.portfolio = :portfolio")
+	void deleteAllByPortfolio(@Param("portfolio") Portfolio portfolio);
 }
