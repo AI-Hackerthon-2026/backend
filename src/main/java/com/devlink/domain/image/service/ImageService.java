@@ -15,7 +15,6 @@ import java.util.UUID;
 
 /**
  * 이미지 업로드 서비스
- * 로컬 파일 시스템에 UUID 기반 파일명으로 저장
  * 저장 경로: {java.io.tmpdir}/devlink/images/
  *
  * @since 2026.05.17
@@ -30,7 +29,7 @@ public class ImageService {
 		"image/jpeg", "image/png", "image/gif", "image/webp"
 	);
 
-	private static final String UPLOAD_PATH =
+	public static final String UPLOAD_PATH =
 		System.getProperty("java.io.tmpdir") + File.separator + "devlink" + File.separator + "images" + File.separator;
 
 	public String upload(MultipartFile file) {
@@ -57,10 +56,6 @@ public class ImageService {
 		} catch (IOException e) {
 			throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
 		}
-	}
-
-	public static String getUploadPath() {
-		return UPLOAD_PATH;
 	}
 
 	private void validateFileType(MultipartFile file) {

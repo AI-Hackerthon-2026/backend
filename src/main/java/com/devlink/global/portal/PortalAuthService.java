@@ -182,6 +182,8 @@ public class PortalAuthService {
 		return cookies;
 	}
 
+
+
 	/**
 	 * 포털 로그인 수행 및 쿠키 반환
 	 * user.md의 로직을 그대로 구현
