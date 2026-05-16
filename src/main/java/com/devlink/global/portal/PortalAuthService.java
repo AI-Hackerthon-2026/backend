@@ -178,6 +178,7 @@ public class PortalAuthService {
 
 		if (!homeRes.url().toString().contains("portal.gachon.ac.kr/p/")) return null;
 
+
 		return cookies;
 	}
 

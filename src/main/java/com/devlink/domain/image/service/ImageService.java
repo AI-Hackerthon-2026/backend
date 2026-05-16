@@ -2,7 +2,6 @@ package com.devlink.domain.image.service;
 
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +16,7 @@ import java.util.UUID;
 /**
  * 이미지 업로드 서비스
  * 로컬 파일 시스템에 UUID 기반 파일명으로 저장
+ * 저장 경로: {java.io.tmpdir}/devlink/images/
  *
  * @since 2026.05.17
  * @version 1.0.0
@@ -30,8 +30,8 @@ public class ImageService {
 		"image/jpeg", "image/png", "image/gif", "image/webp"
 	);
 
-	@Value("${file.local.path}")
-	private String uploadPath;
+	private static final String UPLOAD_PATH =
+		System.getProperty("java.io.tmpdir") + File.separator + "devlink" + File.separator + "images" + File.separator;
 
 	public String upload(MultipartFile file) {
 		if (file == null || file.isEmpty()) {
@@ -41,16 +41,15 @@ public class ImageService {
 		validateFileType(file);
 
 		try {
-			File directory = new File(uploadPath);
+			File directory = new File(UPLOAD_PATH);
 			if (!directory.exists()) {
 				directory.mkdirs();
 			}
 
 			String originalFilename = file.getOriginalFilename();
-			String ext = extractExtension(originalFilename);
 			String uniqueFilename = UUID.randomUUID() + "_" + originalFilename;
 
-			Path filePath = Paths.get(uploadPath, uniqueFilename);
+			Path filePath = Paths.get(UPLOAD_PATH, uniqueFilename);
 			Files.copy(file.getInputStream(), filePath);
 
 			return "/image/" + uniqueFilename;
@@ -60,14 +59,17 @@ public class ImageService {
 		}
 	}
 
+	public static String getUploadPath() {
+		return UPLOAD_PATH;
+	}
+
 	private void validateFileType(MultipartFile file) {
 		String contentType = file.getContentType();
 		if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType)) {
 			throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
 		}
 
-		String originalFilename = file.getOriginalFilename();
-		String ext = extractExtension(originalFilename);
+		String ext = extractExtension(file.getOriginalFilename());
 		if (!ALLOWED_EXTENSIONS.contains(ext)) {
 			throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
 		}
