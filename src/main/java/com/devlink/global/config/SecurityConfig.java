@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -60,14 +61,20 @@ public class SecurityConfig {
 				.authenticationEntryPoint((request, response, authException) -> {
 					response.setStatus(HttpStatus.UNAUTHORIZED.value());
 					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-					response.getWriter().write(objectMapper.writeValueAsString(
-						Map.of("success", false, "message", "로그인이 필요한 서비스입니다.", "data", null)));
+					Map<String, Object> body = new LinkedHashMap<>();
+					body.put("success", false);
+					body.put("message", "로그인이 필요한 서비스입니다.");
+					body.put("data", null);
+					response.getWriter().write(objectMapper.writeValueAsString(body));
 				})
 				.accessDeniedHandler((request, response, accessDeniedException) -> {
 					response.setStatus(HttpStatus.FORBIDDEN.value());
 					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-					response.getWriter().write(objectMapper.writeValueAsString(
-						Map.of("success", false, "message", "접근 권한이 없습니다.", "data", null)));
+					Map<String, Object> body = new LinkedHashMap<>();
+					body.put("success", false);
+					body.put("message", "접근 권한이 없습니다.");
+					body.put("data", null);
+					response.getWriter().write(objectMapper.writeValueAsString(body));
 				}))
 
 			// 로그아웃 설정
@@ -79,8 +86,11 @@ public class SecurityConfig {
 				.logoutSuccessHandler((request, response, authentication) -> {
 					response.setStatus(HttpStatus.OK.value());
 					response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-					response.getWriter().write(objectMapper.writeValueAsString(
-						Map.of("success", true, "message", "로그아웃되었습니다.", "data", null)));
+					Map<String, Object> body = new LinkedHashMap<>();
+					body.put("success", true);
+					body.put("message", "로그아웃되었습니다.");
+					body.put("data", null);
+					response.getWriter().write(objectMapper.writeValueAsString(body));
 				}));
 
 		return http.build();
