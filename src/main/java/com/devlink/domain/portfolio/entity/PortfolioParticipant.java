@@ -17,13 +17,11 @@ import java.time.LocalDateTime;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 @Entity
-@Table(name = "portfolio_participants",
-	uniqueConstraints = @UniqueConstraint(
-		name = "uk_portfolio_user",
-		columnNames = {"portfolio_id", "user_id"}))
+@Table(name = "portfolio_participants", uniqueConstraints = @UniqueConstraint(name = "uk_portfolio_user", columnNames = {
+		"portfolio_id", "user_id" }))
 @Getter
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -59,7 +57,7 @@ public class PortfolioParticipant {
 
 	@Builder
 	public PortfolioParticipant(Portfolio portfolio, User user, String role,
-								boolean canEdit, boolean isOwner) {
+			boolean canEdit, boolean isOwner) {
 		this.portfolio = portfolio;
 		this.user = user;
 		this.role = role;

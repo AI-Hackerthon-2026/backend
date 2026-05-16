@@ -6,6 +6,8 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -15,13 +17,16 @@ import java.util.Map;
 /**
  * 가천대 포털 SSO 인증 서비스
  * user.md의 Jsoup 크롤링 로직을 기반으로 구현
+ * 각 단계별 로그를 출력하여 디버깅 지원
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 @Service
 public class PortalAuthService {
+
+	private static final Logger log = LoggerFactory.getLogger(PortalAuthService.class);
 
 	@Value("${portal.main}")
 	private String portalMain;
@@ -37,7 +42,7 @@ public class PortalAuthService {
 
 	/**
 	 * 포털 SSO 인증 수행
-	 * 쿠키 3개 반환 시 인증 성공으로 판정
+	 * user.md: 쿠키 3개 반환 시 로그인 성공으로 판정
 	 *
 	 * @param portalId 포털 아이디
 	 * @param password 포털 비밀번호
@@ -47,10 +52,17 @@ public class PortalAuthService {
 	public boolean authenticate(String portalId, String password) {
 		try {
 			Map<String, String> cookies = login(portalId, password);
-			return cookies != null && cookies.size() >= 3;
+			/* 
+			 * user.md: 기본적으로 쿠키 3개 반환 시 성공이나,
+			 * 비밀번호 만료(exPassword) 캠페인 페이지인 경우 인증 자체는 성공한 것이므로 우회 처리 
+			 */
+			boolean success = cookies != null && (cookies.size() >= 3 || cookies.containsKey("PASS_EXPIRED_SUCCESS"));
+			log.info("[포털 인증] 최종 결과: {} / 쿠키 수: {}", success ? "성공" : "실패", cookies != null ? cookies.size() : 0);
+			return success;
 		} catch (CustomException e) {
 			throw e;
 		} catch (Exception e) {
+			log.error("[포털 인증] 예상치 못한 오류: {}", e.getMessage(), e);
 			throw new CustomException(ErrorCode.PORTAL_CONNECTION_ERROR);
 		}
 	}
@@ -73,9 +85,11 @@ public class PortalAuthService {
 			.execute();
 
 		cookies.putAll(portalInitRes.cookies());
+
 		Thread.sleep(500);
 
 		String ssoLoginUrl = portalInitRes.url().toString();
+
 		Document ssoDoc = portalInitRes.parse();
 		Element loginForm = null;
 
@@ -85,10 +99,10 @@ public class PortalAuthService {
 				break;
 			}
 		}
-
-		/* 로그인 폼을 찾지 못한 경우 인증 실패 */
+		
 		if (loginForm == null) {
-			throw new CustomException(ErrorCode.PORTAL_CONNECTION_ERROR);
+			log.error("[인증오류] c_token 폼을 찾을 수 없음. ssoLoginUrl={}", ssoLoginUrl);
+			return null;
 		}
 
 		String formAction = loginForm.attr("action");
@@ -116,6 +130,16 @@ public class PortalAuthService {
 			.execute();
 
 		cookies.putAll(loginRes.cookies());
+
+		if (loginRes.statusCode() == 200 && loginRes.header("Location") == null) {
+			if (loginRes.body().contains("exPassword")) {
+				log.warn("[인증성공-예외] 비밀번호 변경 권고 페이지 감지. ID/PW는 일치하므로 인증 성공으로 간주합니다.");
+				cookies.put("PASS_EXPIRED_SUCCESS", "true");
+				return cookies; // 여기서 즉시 종료하여 성공 처리
+			}
+			log.warn("[인증경고] POST 리다이렉트가 아님(200 OK). 바디 일부: {}", 
+				loginRes.body().length() > 500 ? loginRes.body().substring(0, 500) : loginRes.body());
+		}
 
 		// 3단계: 리다이렉트 체인 추적
 		String nextUrl = loginRes.header("Location");
@@ -161,9 +185,9 @@ public class PortalAuthService {
 
 		cookies.putAll(homeRes.cookies());
 
-		/* 포털 홈에 도달하지 못한 경우 인증 실패 */
 		if (!homeRes.url().toString().contains("portal.gachon.ac.kr/p/")) {
-			throw new CustomException(ErrorCode.PORTAL_AUTH_FAILED);
+			log.error("[인증오류] 포털 홈 도달 실패. 최종 url={}", homeRes.url());
+			return null;
 		}
 
 		return cookies;

@@ -6,10 +6,10 @@ package com.devlink.domain.user.entity;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 public enum UserLevel {
-	STUDENT,    // 일반 학생
-	PROFESSOR,  // 지도 교수/강사
-	ADMIN       // 시스템 관리자
+	STUDENT, // 일반 학생
+	PROFESSOR, // 지도 교수/강사
+	ADMIN // 시스템 관리자
 }

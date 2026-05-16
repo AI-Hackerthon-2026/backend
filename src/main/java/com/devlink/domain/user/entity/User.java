@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 @Entity
 @Table(name = "users")
@@ -65,7 +65,7 @@ public class User {
 
 	@Builder
 	public User(String name, String portalId, String studentId, Integer grade,
-				String githubLink, UserLevel userLevel) {
+			String githubLink, UserLevel userLevel) {
 		this.name = name;
 		this.portalId = portalId;
 		this.studentId = studentId;

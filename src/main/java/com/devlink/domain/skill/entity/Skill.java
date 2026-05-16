@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 @Entity
 @Table(name = "skills")

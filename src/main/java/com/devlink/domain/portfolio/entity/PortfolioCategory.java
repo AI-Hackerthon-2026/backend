@@ -6,10 +6,10 @@ package com.devlink.domain.portfolio.entity;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 public enum PortfolioCategory {
-	GRADUATION,   // 졸업 프로젝트
-	P_PROJECT,    // P-프로젝트
-	AUTONOMOUS    // 자율 프로젝트
+	GRADUATION, // 졸업 프로젝트
+	P_PROJECT, // P-프로젝트
+	AUTONOMOUS // 자율 프로젝트
 }

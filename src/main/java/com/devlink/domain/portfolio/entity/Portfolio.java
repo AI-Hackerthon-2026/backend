@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  *
  * @since 2026.05.16
  * @version 1.0.0
- * @author DevLink Team
+ * @author 신태훈, 조하겸
  */
 @Entity
 @Table(name = "portfolios")
@@ -96,9 +96,9 @@ public class Portfolio {
 
 	@Builder
 	public Portfolio(User user, String projectName, PortfolioCategory category,
-					String summary, String description, String thumbnailUrl,
-					String imageUrl, String githubLink, String deploymentLink,
-					LocalDate startDate, LocalDate endDate) {
+			String summary, String description, String thumbnailUrl,
+			String imageUrl, String githubLink, String deploymentLink,
+			LocalDate startDate, LocalDate endDate) {
 		this.user = user;
 		this.projectName = projectName;
 		this.category = category;
@@ -114,9 +114,9 @@ public class Portfolio {
 
 	/** 포트폴리오 정보 수정 */
 	public void update(String projectName, PortfolioCategory category, String summary,
-					String description, String thumbnailUrl, String imageUrl,
-					String githubLink, String deploymentLink,
-					LocalDate startDate, LocalDate endDate) {
+			String description, String thumbnailUrl, String imageUrl,
+			String githubLink, String deploymentLink,
+			LocalDate startDate, LocalDate endDate) {
 		this.projectName = projectName;
 		this.category = category;
 		this.summary = summary;
@@ -136,7 +136,8 @@ public class Portfolio {
 
 	/** 공감 수 감소 */
 	public void decreaseLikeCount() {
-		if (this.likeCount > 0) this.likeCount--;
+		if (this.likeCount > 0)
+			this.likeCount--;
 	}
 
 	/** 소프트 삭제 처리 */

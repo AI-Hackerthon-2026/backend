@@ -29,6 +29,11 @@ out/
 ### VS Code ###
 .vscode/
 
+### Custom Logs ###
+portal_log*.txt
+run_log*.txt
+*.log
+
 ### 민감 정보 (Git Flow Custom Rule 준수) ###
 .env
 .env.*
