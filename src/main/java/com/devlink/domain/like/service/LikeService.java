@@ -1,5 +1,6 @@
 package com.devlink.domain.like.service;
 
+import com.devlink.domain.like.dto.LikeResponse;
 import com.devlink.domain.like.entity.Like;
 import com.devlink.domain.like.repository.LikeRepository;
 import com.devlink.domain.portfolio.entity.Portfolio;
@@ -7,21 +8,23 @@ import com.devlink.domain.portfolio.repository.PortfolioRepository;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
 import com.devlink.global.exception.CustomException;
+import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 /**
  * 공감 서비스
- * 한 사용자는 하나의 포트폴리오에 한 번만 공감 가능
+ * 공감 토글 (있으면 취소, 없으면 추가)
  *
- * @since : 2026.05.16
- * @version : 0.0.1
- * @author : DevLink Team
+ * @since 2026.05.16
+ * @version 1.0.0
+ * @author 신태훈, 조하겸
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class LikeService {
 
 	private final LikeRepository likeRepository;
@@ -29,51 +32,42 @@ public class LikeService {
 	private final UserRepository userRepository;
 
 	/**
-	 * 포트폴리오 공감 추가
+	 * 공감 토글
+	 * 이미 공감했으면 취소, 아니면 추가
 	 *
-	 * @param userId 사용자 ID
 	 * @param portfolioId 포트폴리오 ID
-	 * @throws CustomException 이미 공감한 경우 예외 발생
+	 * @param userId      현재 로그인 사용자 ID
+	 * @return 공감 여부 및 현재 공감 수
 	 */
 	@Transactional
-	public void addLike(Long userId, Long portfolioId) {
-		/* 중복 공감 방지 */
-		if (likeRepository.existsByUserIdAndPortfolioId(userId, portfolioId)) {
-			throw CustomException.alreadyLiked();
+	public LikeResponse toggleLike(Long portfolioId, Long userId) {
+		Portfolio portfolio = portfolioRepository.findByIdAndIsDeletedFalse(portfolioId)
+			.orElseThrow(() -> new CustomException(ErrorCode.PORTFOLIO_NOT_FOUND));
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+		Optional<Like> existingLike = likeRepository.findByUserAndPortfolio(user, portfolio);
+
+		boolean isLiked;
+
+		if (existingLike.isPresent()) {
+			/* 이미 공감한 경우 → 취소 */
+			likeRepository.delete(existingLike.get());
+			portfolio.decreaseLikeCount();
+			isLiked = false;
+		} else {
+			/* 공감하지 않은 경우 → 추가 */
+			likeRepository.save(Like.builder()
+				.user(user)
+				.portfolio(portfolio)
+				.build());
+			portfolio.increaseLikeCount();
+			isLiked = true;
 		}
 
-		User user = userRepository.findById(userId)
-			.orElseThrow(CustomException::notFound);
-
-		Portfolio portfolio = portfolioRepository.findById(portfolioId)
-			.orElseThrow(CustomException::notFound);
-
-		Like like = Like.builder()
-			.user(user)
-			.portfolio(portfolio)
+		return LikeResponse.builder()
+			.isLiked(isLiked)
+			.likeCount(portfolio.getLikeCount())
 			.build();
-
-		likeRepository.save(like);
-
-		/* 포트폴리오 공감 수 증가 */
-		portfolio.increaseLikeCount();
-	}
-
-	/**
-	 * 포트폴리오 공감 취소
-	 * Like 엔티티 내부의 portfolio를 직접 사용 → 별도 DB 조회 제거
-	 *
-	 * @param userId 사용자 ID
-	 * @param portfolioId 포트폴리오 ID
-	 */
-	@Transactional
-	public void cancelLike(Long userId, Long portfolioId) {
-		Like like = likeRepository.findByUserIdAndPortfolioId(userId, portfolioId)
-			.orElseThrow(CustomException::notFound);
-
-		/* like 안의 portfolio 직접 사용 — 중복 DB 조회 제거 */
-		like.getPortfolio().decreaseLikeCount();
-
-		likeRepository.delete(like);
 	}
 }

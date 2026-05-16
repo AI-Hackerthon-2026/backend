@@ -1,63 +1,60 @@
 package com.devlink.domain.user.service;
 
-import com.devlink.domain.user.dto.UserRequestDto;
-import com.devlink.domain.user.dto.UserResponseDto;
+import com.devlink.domain.user.dto.UserProfileResponse;
+import com.devlink.domain.user.dto.UserUpdateRequest;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
 import com.devlink.global.exception.CustomException;
+import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 사용자 서비스
+ * 프로필 조회 및 수정
  *
- * @since : 2026.05.16
- * @version : 0.0.1
- * @author : DevLink Team
+ * @since 2026.05.16
+ * @version 1.0.0
+ * @author 신태훈, 조하겸
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class UserService {
 
 	private final UserRepository userRepository;
 
 	/**
-	 * 사용자 등록
+	 * 내 프로필 조회
 	 *
-	 * @param requestDto 사용자 요청 정보
-	 * @return 등록된 사용자 응답 DTO
-	 * @throws CustomException 이메일 중복 시 예외 발생
+	 * @param userId 세션에서 가져온 사용자 ID
+	 * @return 사용자 프로필 응답
 	 */
-	@Transactional
-	public UserResponseDto registerUser(UserRequestDto requestDto) {
-		if (userRepository.existsByEmail(requestDto.getEmail())) {
-			throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
-		}
-
-		User user = User.builder()
-			.name(requestDto.getName())
-			.studentId(requestDto.getStudentId())
-			.email(requestDto.getEmail())
-			.bio(requestDto.getBio())
-			.techStack(requestDto.getTechStack())
-			.build();
-
-		return UserResponseDto.from(userRepository.save(user));
+	@Transactional(readOnly = true)
+	public UserProfileResponse getMyProfile(Long userId) {
+		User user = findUserById(userId);
+		return UserProfileResponse.from(user);
 	}
 
 	/**
-	 * 사용자 단건 조회
+	 * 내 프로필 수정 (name, grade, githubLink만 수정 가능)
 	 *
-	 * @param userId 사용자 ID
-	 * @return 사용자 응답 DTO
+	 * @param userId  세션에서 가져온 사용자 ID
+	 * @param request 수정 요청 DTO
+	 * @return 수정된 사용자 프로필 응답
 	 */
-	public UserResponseDto getUserById(Long userId) {
-		User user = userRepository.findById(userId)
-			.orElseThrow(CustomException::notFound);
+	@Transactional
+	public UserProfileResponse updateMyProfile(Long userId, UserUpdateRequest request) {
+		User user = findUserById(userId);
+		user.updateProfile(request.getName(), request.getGrade(), request.getGithubLink());
+		return UserProfileResponse.from(user);
+	}
 
-		return UserResponseDto.from(user);
+	/**
+	 * ID로 사용자 조회 (내부 공통 메서드)
+	 */
+	private User findUserById(Long userId) {
+		return userRepository.findById(userId)
+			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 	}
 }

@@ -6,35 +6,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 /**
- * 사용자 Repository
+ * 사용자 리포지토리
  *
- * @since : 2026.05.16
- * @version : 0.0.1
- * @author : DevLink Team
+ * @since 2026.05.16
+ * @version 1.0.0
+ * @author 신태훈, 조하겸
  */
 public interface UserRepository extends JpaRepository<User, Long> {
 
-	/**
-	 * 이메일로 사용자 조회
-	 *
-	 * @param email 이메일
-	 * @return Optional<User>
-	 */
-	Optional<User> findByEmail(String email);
+	Optional<User> findByPortalId(String portalId);
 
-	/**
-	 * 학번으로 사용자 조회
-	 *
-	 * @param studentId 학번
-	 * @return Optional<User>
-	 */
-	Optional<User> findByStudentId(String studentId);
+	boolean existsByPortalId(String portalId);
 
-	/**
-	 * 이메일 중복 확인
-	 *
-	 * @param email 이메일
-	 * @return 중복 여부
-	 */
-	boolean existsByEmail(String email);
+	boolean existsByStudentId(String studentId);
 }

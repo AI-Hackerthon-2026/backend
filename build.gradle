@@ -30,8 +30,17 @@ dependencies {
 	// Spring Data JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
+	// Spring Security (세션 기반 인증)
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Validation
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
 	// Swagger (SpringDoc OpenAPI)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+
+	// Jsoup (가천대 포털 SSO 크롤링)
+	implementation 'org.jsoup:jsoup:1.17.2'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
@@ -40,8 +49,12 @@ dependencies {
 	// H2 In-Memory DB (개발용)
 	runtimeOnly 'com.h2database:h2'
 
+	// MySQL (운영용 - properties 교체 시 활성화)
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
