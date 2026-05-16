@@ -1,5 +1,6 @@
 plugins {
 	id 'java'
+	id 'war'
 	id 'org.springframework.boot' version '3.5.0'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -24,8 +25,9 @@ repositories {
 }
 
 dependencies {
-	// Spring Web
+	// Spring Web (내장 Tomcat은 외부 Tomcat이 제공하므로 providedRuntime 처리)
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 
 	// Spring Data JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
