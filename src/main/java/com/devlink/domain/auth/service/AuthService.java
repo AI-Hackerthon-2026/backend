@@ -6,6 +6,7 @@ import com.devlink.domain.auth.dto.RegisterRequest;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.entity.UserLevel;
 import com.devlink.domain.user.repository.UserRepository;
+import com.devlink.global.common.ValidationUtils;
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
 import com.devlink.global.portal.PortalAuthService;
@@ -44,8 +45,8 @@ public class AuthService {
 	 * 포털 SSO 로그인
 	 * 1. 포털 인증 수행
 	 * 2. DB 사용자 조회
-	 *    ├─ 기존 회원 → Spring Security 정식 세션 생성
-	 *    └─ 최초 로그인 → 임시 세션(portalId 저장) + isFirstLogin: true 반환
+	 * ├─ 기존 회원 → Spring Security 정식 세션 생성
+	 * └─ 최초 로그인 → 임시 세션(portalId 저장) + isFirstLogin: true 반환
 	 *
 	 * @param request 포털 아이디, 비밀번호
 	 * @param session HTTP 세션
@@ -100,15 +101,21 @@ public class AuthService {
 			throw new CustomException(ErrorCode.DUPLICATE_PORTAL_ID);
 		}
 
+		// GitHub 링크 형식 검증
+		if (request.getGithubLink() != null && !request.getGithubLink().isBlank()
+				&& !ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
+			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
+		}
+
 		// 사용자 생성
 		User newUser = User.builder()
-			.portalId(portalId)
-			.studentId(request.getStudentId())
-			.name(request.getName())
-			.grade(request.getGrade())
-			.githubLink(request.getGithubLink())
-			.userLevel(request.getUserLevel() != null ? request.getUserLevel() : UserLevel.STUDENT)
-			.build();
+				.portalId(portalId)
+				.studentId(request.getStudentId())
+				.name(request.getName())
+				.grade(request.getGrade())
+				.githubLink(request.getGithubLink())
+				.userLevel(request.getUserLevel() != null ? request.getUserLevel() : UserLevel.STUDENT)
+				.build();
 
 		User savedUser = userRepository.save(newUser);
 
@@ -126,18 +133,18 @@ public class AuthService {
 	 * @param session HTTP 세션
 	 */
 	private void createSecuritySession(User user, HttpSession session) {
-		List<SimpleGrantedAuthority> authorities =
-			List.of(new SimpleGrantedAuthority("ROLE_" + user.getUserLevel().name()));
+		List<SimpleGrantedAuthority> authorities = List
+				.of(new SimpleGrantedAuthority("ROLE_" + user.getUserLevel().name()));
 
-		UsernamePasswordAuthenticationToken authentication =
-			new UsernamePasswordAuthenticationToken(user.getId(), null, authorities);
+		UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(user.getId(), null,
+				authorities);
 
 		SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
 		securityContext.setAuthentication(authentication);
 		SecurityContextHolder.setContext(securityContext);
 
 		session.setAttribute(
-			HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-			securityContext);
+				HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+				securityContext);
 	}
 }

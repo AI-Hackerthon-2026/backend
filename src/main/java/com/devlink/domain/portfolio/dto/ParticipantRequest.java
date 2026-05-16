@@ -1,5 +1,8 @@
 package com.devlink.domain.portfolio.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
@@ -16,6 +19,7 @@ public class ParticipantRequest {
 	@NotNull(message = "참여자 userId는 필수입니다.")
 	private Long userId;
 
-	/** 담당 역할 (선택) */
+	/** 담당 역할 (필수) */
+	@NotBlank(message = "참여자 역할은 필수 입력 항목입니다.")
 	private String role;
 }

@@ -13,13 +13,25 @@ import com.devlink.domain.skill.repository.PortfolioSkillRepository;
 import com.devlink.domain.skill.repository.SkillRepository;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
+import com.devlink.global.common.PageResponse;
+import com.devlink.global.common.ValidationUtils;
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 포트폴리오 서비스
@@ -44,45 +56,55 @@ public class PortfolioService {
 	 * 포트폴리오 전체 목록 조회
 	 * category, skills 파라미터로 필터, sort로 정렬
 	 *
-	 * @param category 커테고리 필터 (null이면 전체)
-	 * @param skills 필터링할 기술 목록 (null이면 전체)
-	 * @param sort 정렬 기준 (LATEST, LIKES)
+	 * @param category 카테고리 필터 (null이면 전체)
+	 * @param skills   쉼표 구분 기술 목록 (null이면 전체)
+	 * @param sort     정렬 기준 (LATEST, LIKES)
+	 * @param page     페이지 번호 (0부터 시작)
+	 * @param size     페이지 크기
+	 * @param userId   현재 로그인 사용자 ID
 	 */
 	@Transactional(readOnly = true)
-	public List<PortfolioListResponse> getPortfolioList(String category, List<String> skills, String sort) {
-		List<Portfolio> portfolios;
+	public PageResponse<PortfolioListResponse> getPortfolioList(
+			String category,
+			String skills,
+			String sort,
+			int page,
+			int size,
+			Long userId) {
+		PortfolioCategory portfolioCategory = parseCategory(category);
+		List<String> skillNames = parseSkills(skills);
+		Sort sortOrder = "LIKES".equalsIgnoreCase(sort)
+				? Sort.by(Sort.Direction.DESC, "likeCount", "createdAt")
+				: Sort.by(Sort.Direction.DESC, "createdAt");
+		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1), sortOrder);
 
-		if (skills == null || skills.isEmpty()) {
-			/* 기술필터 없음: 정렬 기준으로 전체 조회 */
-			portfolios = "LIKES".equalsIgnoreCase(sort)
-				? portfolioRepository.findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc()
-				: portfolioRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc();
+		Page<Portfolio> portfolioPage;
+		if (skillNames.isEmpty()) {
+			portfolioPage = portfolioCategory == null
+					? portfolioRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc(pageable)
+					: "LIKES".equalsIgnoreCase(sort)
+							? portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(
+									portfolioCategory, pageable)
+							: portfolioRepository.findAllByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(
+									portfolioCategory, pageable);
 		} else {
-			/* 기술스택 필터 적용 */
-			portfolios = "LIKES".equalsIgnoreCase(sort)
-				? portfolioRepository.findBySkillsAndLikes(skills)
-				: portfolioRepository.findBySkillsAndLatest(skills);
+			portfolioPage = "LIKES".equalsIgnoreCase(sort)
+					? portfolioRepository.findBySkillsAndLikes(portfolioCategory, skillNames, pageable)
+					: portfolioRepository.findBySkillsAndLatest(portfolioCategory, skillNames, pageable);
 		}
 
-		/* 커테고리 필터 적용 */
-		if (category != null && !category.isBlank()) {
-			try {
-				PortfolioCategory cat = PortfolioCategory.valueOf(category.toUpperCase());
-				portfolios = portfolios.stream()
-					.filter(p -> p.getCategory() == cat)
-					.toList();
-			} catch (IllegalArgumentException ignored) {
-				/* 잘못된 커테고리 값이면 필터 무시 */
-			}
-		}
+		User currentUser = userId != null
+				? userRepository.findById(userId).orElse(null)
+				: null;
 
-		return portfolios.stream()
-			.map(p -> {
-				List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
-				List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
-				return PortfolioListResponse.from(p, ps, parts);
-			})
-			.toList();
+		Page<PortfolioListResponse> responsePage = portfolioPage.map(portfolio -> {
+			List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(portfolio);
+			List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(portfolio);
+			boolean isLiked = currentUser != null && likeRepository.existsByUserAndPortfolio(currentUser, portfolio);
+			return PortfolioListResponse.from(portfolio, ps, parts, isLiked);
+		});
+
+		return PageResponse.of(responsePage);
 	}
 
 	/**
@@ -119,24 +141,92 @@ public class PortfolioService {
 	@Transactional(readOnly = true)
 	public List<PortfolioListResponse> getPopular() {
 		return portfolioRepository.findTop3ByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc()
-			.stream()
-			.map(p -> {
-				List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
-				List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
-				return PortfolioListResponse.from(p, ps, parts);
-			})
-			.toList();
+				.stream()
+				.map(p -> {
+					List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
+					List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
+					return PortfolioListResponse.from(p, ps, parts);
+				})
+				.toList();
+	}
+
+	/**
+	 * 메인 배너 TOP 3 조회
+	 */
+	@Transactional(readOnly = true)
+	public List<PortfolioTopResponse> getTopPortfolios() {
+		LocalDateTime now = LocalDateTime.now();
+		SemesterRange currentSemester = getCurrentSemesterRange(now);
+		SemesterRange lastSemester = getLastSemesterRange(now);
+
+		List<PortfolioTopResponse> topResponses = new ArrayList<>();
+
+		portfolioRepository
+				.findTopByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+						currentSemester.startAt(), currentSemester.endAt())
+				.ifPresent(portfolio -> topResponses.add(
+						PortfolioTopResponse.from(portfolio,
+								portfolioSkillRepository.findAllByPortfolio(portfolio),
+								"CURRENT_SEMESTER", "이번 학기")));
+
+		portfolioRepository
+				.findTopByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+						lastSemester.startAt(), lastSemester.endAt())
+				.ifPresent(portfolio -> topResponses.add(
+						PortfolioTopResponse.from(portfolio,
+								portfolioSkillRepository.findAllByPortfolio(portfolio),
+								"LAST_SEMESTER", "지난 학기")));
+
+		portfolioRepository
+				.findTopByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc()
+				.ifPresent(portfolio -> topResponses.add(
+						PortfolioTopResponse.from(portfolio,
+								portfolioSkillRepository.findAllByPortfolio(portfolio),
+								"ALL_TIME", "전체 기간")));
+
+		return topResponses;
 	}
 
 	/**
 	 * 랭킹 목록 조회 (공감 많은 순, period 파라미터로 이번/지난 학기 필터)
-	 * 현재는 전체 기간 기준으로만 동작 (semester 구분은 추후 연동일에 확장)
 	 *
-	 * @param period 기간 필터 (ALL_TIME / CURRENT_SEMESTER / LAST_SEMESTER, 현재 ALL_TIME로 동작)
+	 * @param period 기간 필터 (ALL_TIME / CURRENT_SEMESTER / LAST_SEMESTER)
+	 * @param userId 현재 로그인 사용자 ID (비로그인이면 null)
 	 */
 	@Transactional(readOnly = true)
-	public List<PortfolioListResponse> getRanking(String period) {
-		return getPortfolioList(null, null, "LIKES");
+	public List<PortfolioListResponse> getRanking(String period, Long userId) {
+		List<Portfolio> portfolios;
+		LocalDateTime now = LocalDateTime.now();
+
+		if ("CURRENT_SEMESTER".equalsIgnoreCase(period)) {
+			SemesterRange currentSemester = getCurrentSemesterRange(now);
+			portfolios = portfolioRepository
+					.findAllByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+							currentSemester.startAt(), currentSemester.endAt());
+		} else if ("LAST_SEMESTER".equalsIgnoreCase(period)) {
+			SemesterRange lastSemester = getLastSemesterRange(now);
+			portfolios = portfolioRepository
+					.findAllByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+							lastSemester.startAt(), lastSemester.endAt());
+		} else {
+			portfolios = portfolioRepository.findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc();
+		}
+
+		User currentUser = null;
+		if (userId != null) {
+			currentUser = userRepository.findById(userId).orElse(null);
+		}
+
+		User finalUser = currentUser;
+		return portfolios.stream()
+				.map(portfolio -> {
+					List<PortfolioSkill> skills = portfolioSkillRepository.findAllByPortfolio(portfolio);
+					List<PortfolioParticipant> participants = participantRepository.findAllByPortfolio(portfolio);
+					boolean isLiked = finalUser != null
+							&& likeRepository.existsByUserAndPortfolio(finalUser, portfolio);
+					return PortfolioListResponse.from(portfolio, skills, participants, isLiked);
+				})
+				.toList();
 	}
 
 	/**
@@ -149,7 +239,9 @@ public class PortfolioService {
 	@Transactional
 	public PortfolioDetailResponse createPortfolio(PortfolioCreateRequest request, Long authorId) {
 		User author = userRepository.findById(authorId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+		validatePortfolioRequest(request);
 
 		/* 날짜 유효성 검사 */
 		if (request.getEndDate().isBefore(request.getStartDate())) {
@@ -163,48 +255,48 @@ public class PortfolioService {
 
 		/* GRADUATION, P_PROJECT는 참여자 필수 */
 		if ((request.getCategory() == PortfolioCategory.GRADUATION
-			|| request.getCategory() == PortfolioCategory.P_PROJECT)
-			&& (request.getParticipants() == null || request.getParticipants().isEmpty())) {
+				|| request.getCategory() == PortfolioCategory.P_PROJECT)
+				&& (request.getParticipants() == null || request.getParticipants().isEmpty())) {
 			throw new CustomException(ErrorCode.PARTICIPANT_REQUIRED);
 		}
 
 		/* 포트폴리오 저장 */
 		Portfolio portfolio = Portfolio.builder()
-			.user(author)
-			.projectName(request.getProjectName())
-			.category(request.getCategory())
-			.summary(request.getSummary())
-			.description(request.getDescription())
-			.thumbnailUrl(request.getThumbnailUrl())
-			.githubLink(request.getGithubLink())
-			.deploymentLink(request.getDeploymentLink())
-			.startDate(request.getStartDate())
-			.endDate(request.getEndDate())
-			.build();
+				.user(author)
+				.projectName(request.getProjectName())
+				.category(request.getCategory())
+				.summary(request.getSummary())
+				.description(request.getDescription())
+				.thumbnailUrl(request.getThumbnailUrl())
+				.githubLink(request.getGithubLink())
+				.deploymentLink(request.getDeploymentLink())
+				.startDate(request.getStartDate())
+				.endDate(request.getEndDate())
+				.build();
 
 		portfolioRepository.save(portfolio);
 
 		/* 작성자를 소유자로 참여자 등록 (myRole 사용) */
 		participantRepository.save(PortfolioParticipant.builder()
-			.portfolio(portfolio)
-			.user(author)
-			.role(request.getMyRole())
-			.canEdit(true)
-			.isOwner(true)
-			.build());
+				.portfolio(portfolio)
+				.user(author)
+				.role(request.getMyRole())
+				.canEdit(true)
+				.isOwner(true)
+				.build());
 
 		/* 추가 참여자 등록 */
 		if (request.getParticipants() != null) {
 			for (ParticipantRequest p : request.getParticipants()) {
 				User participant = userRepository.findById(p.getUserId())
-					.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 				participantRepository.save(PortfolioParticipant.builder()
-					.portfolio(portfolio)
-					.user(participant)
-					.role(p.getRole())
-					.canEdit(true)
-					.isOwner(false)
-					.build());
+						.portfolio(portfolio)
+						.user(participant)
+						.role(p.getRole())
+						.canEdit(true)
+						.isOwner(false)
+						.build());
 			}
 		}
 
@@ -225,12 +317,14 @@ public class PortfolioService {
 	public PortfolioDetailResponse updatePortfolio(Long portfolioId, PortfolioUpdateRequest request, Long userId) {
 		Portfolio portfolio = findActivePortfolio(portfolioId);
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
 		/* 수정 권한 확인 */
 		if (!participantRepository.existsByPortfolioAndUserAndCanEditTrue(portfolio, user)) {
 			throw new CustomException(ErrorCode.PORTFOLIO_ACCESS_DENIED);
 		}
+
+		validatePortfolioRequest(request);
 
 		/* 날짜 유효성 검사 */
 		if (request.getEndDate().isBefore(request.getStartDate())) {
@@ -239,23 +333,23 @@ public class PortfolioService {
 
 		/* GitHub 링크 중복 확인 (자기 자신 제외) */
 		if (portfolioRepository.existsByGithubLinkAndIsDeletedFalseAndIdNot(
-			request.getGithubLink(), portfolioId)) {
+				request.getGithubLink(), portfolioId)) {
 			throw new CustomException(ErrorCode.DUPLICATE_GITHUB_LINK);
 		}
 
 		/* GRADUATION, P_PROJECT는 참여자 필수 */
 		if ((request.getCategory() == PortfolioCategory.GRADUATION
-			|| request.getCategory() == PortfolioCategory.P_PROJECT)
-			&& (request.getParticipants() == null || request.getParticipants().isEmpty())) {
+				|| request.getCategory() == PortfolioCategory.P_PROJECT)
+				&& (request.getParticipants() == null || request.getParticipants().isEmpty())) {
 			throw new CustomException(ErrorCode.PARTICIPANT_REQUIRED);
 		}
 
 		/* 포트폴리오 정보 수정 */
 		portfolio.update(request.getProjectName(), request.getCategory(),
-			request.getSummary(), request.getDescription(),
-			request.getThumbnailUrl(),
-			request.getGithubLink(), request.getDeploymentLink(),
-			request.getStartDate(), request.getEndDate());
+				request.getSummary(), request.getDescription(),
+				request.getThumbnailUrl(),
+				request.getGithubLink(), request.getDeploymentLink(),
+				request.getStartDate(), request.getEndDate());
 
 		/* 기술스택 재등록 */
 		portfolioSkillRepository.deleteAllByPortfolio(portfolio);
@@ -264,27 +358,27 @@ public class PortfolioService {
 		/* 참여자 재등록 (소유자 제외하고 삭제 후 재등록) */
 		if (request.getParticipants() != null) {
 			PortfolioParticipant ownerEntry = participantRepository.findAllByPortfolio(portfolio)
-				.stream().filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
+					.stream().filter(PortfolioParticipant::isOwner).findFirst().orElse(null);
 			participantRepository.deleteAllByPortfolio(portfolio);
 			if (ownerEntry != null) {
 				participantRepository.save(PortfolioParticipant.builder()
-					.portfolio(portfolio)
-					.user(ownerEntry.getUser())
-					.role(ownerEntry.getRole())
-					.canEdit(true)
-					.isOwner(true)
-					.build());
+						.portfolio(portfolio)
+						.user(ownerEntry.getUser())
+						.role(ownerEntry.getRole())
+						.canEdit(true)
+						.isOwner(true)
+						.build());
 			}
 			for (ParticipantRequest p : request.getParticipants()) {
 				User participant = userRepository.findById(p.getUserId())
-					.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+						.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 				participantRepository.save(PortfolioParticipant.builder()
-					.portfolio(portfolio)
-					.user(participant)
-					.role(p.getRole())
-					.canEdit(true)
-					.isOwner(false)
-					.build());
+						.portfolio(portfolio)
+						.user(participant)
+						.role(p.getRole())
+						.canEdit(true)
+						.isOwner(false)
+						.build());
 			}
 		}
 
@@ -301,7 +395,7 @@ public class PortfolioService {
 	public void deletePortfolio(Long portfolioId, Long userId) {
 		Portfolio portfolio = findActivePortfolio(portfolioId);
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
 		/* 소유자 권한 확인 */
 		if (!participantRepository.existsByPortfolioAndUserAndIsOwnerTrue(portfolio, user)) {
@@ -319,34 +413,149 @@ public class PortfolioService {
 	@Transactional(readOnly = true)
 	public List<PortfolioListResponse> getMyPortfolios(Long userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
 		return participantRepository.findAllByUser(user).stream()
-			.map(PortfolioParticipant::getPortfolio)
-			.filter(p -> !p.isDeleted())
-			.map(p -> {
-				List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
-				List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
-				return PortfolioListResponse.from(p, ps, parts);
-			})
-			.toList();
+				.map(PortfolioParticipant::getPortfolio)
+				.filter(p -> !p.isDeleted())
+				.map(p -> {
+					List<PortfolioSkill> ps = portfolioSkillRepository.findAllByPortfolio(p);
+					List<PortfolioParticipant> parts = participantRepository.findAllByPortfolio(p);
+					return PortfolioListResponse.from(p, ps, parts);
+				})
+				.toList();
 	}
 
 	/**
 	 * 기술스택 저장 (없으면 자동 생성 후 매핑)
 	 */
 	private void saveSkills(Portfolio portfolio, List<String> skillNames) {
-		if (skillNames == null) return;
+		if (skillNames == null)
+			return;
 		for (String skillName : skillNames) {
 			Skill skill = skillRepository.findByName(skillName)
-				.orElseGet(() -> skillRepository.save(Skill.builder()
-					.name(skillName)
-					.category("Other")
-					.build()));
+					.orElseGet(() -> skillRepository.save(Skill.builder()
+							.name(skillName)
+							.category("Other")
+							.build()));
 			portfolioSkillRepository.save(PortfolioSkill.builder()
-				.portfolio(portfolio)
-				.skill(skill)
-				.build());
+					.portfolio(portfolio)
+					.skill(skill)
+					.build());
+		}
+	}
+
+	private void validatePortfolioRequest(PortfolioCreateRequest request) {
+		if (!ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
+			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
+		}
+
+		if (!ValidationUtils.isValidUrl(request.getThumbnailUrl())) {
+			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
+		}
+
+		if (request.getDeploymentLink() != null && !request.getDeploymentLink().isBlank()
+				&& !ValidationUtils.isValidUrl(request.getDeploymentLink())) {
+			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
+		}
+	}
+
+	private void validatePortfolioRequest(PortfolioUpdateRequest request) {
+		if (!ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
+			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
+		}
+
+		if (!ValidationUtils.isValidUrl(request.getThumbnailUrl())) {
+			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
+		}
+
+		if (request.getDeploymentLink() != null && !request.getDeploymentLink().isBlank()
+				&& !ValidationUtils.isValidUrl(request.getDeploymentLink())) {
+			throw new CustomException(ErrorCode.INVALID_URL_FORMAT);
+		}
+	}
+
+	private PortfolioCategory parseCategory(String category) {
+		if (category == null || category.isBlank()) {
+			return null;
+		}
+		try {
+			return PortfolioCategory.valueOf(category.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	private List<String> parseSkills(String skills) {
+		if (skills == null || skills.isBlank()) {
+			return List.of();
+		}
+		return Arrays.stream(skills.split(","))
+				.map(String::trim)
+				.filter(value -> !value.isEmpty())
+				.toList();
+	}
+
+	private SemesterRange getCurrentSemesterRange(LocalDateTime now) {
+		Month month = now.getMonth();
+		int year = now.getYear();
+		if (month.getValue() >= Month.MARCH.getValue() && month.getValue() <= Month.AUGUST.getValue()) {
+			return new SemesterRange(
+					LocalDate.of(year, Month.MARCH, 1).atStartOfDay(),
+					LocalDate.of(year, Month.AUGUST, 31).atTime(23, 59, 59));
+		}
+
+		if (month.getValue() >= Month.SEPTEMBER.getValue()) {
+			LocalDate endDate = LocalDate.of(year + 1, Month.FEBRUARY,
+					LocalDate.of(year + 1, Month.FEBRUARY, 1).lengthOfMonth());
+			return new SemesterRange(
+					LocalDate.of(year, Month.SEPTEMBER, 1).atStartOfDay(),
+					endDate.atTime(23, 59, 59));
+		}
+
+		LocalDate endDate = LocalDate.of(year, Month.FEBRUARY, LocalDate.of(year, Month.FEBRUARY, 1).lengthOfMonth());
+		return new SemesterRange(
+				LocalDate.of(year - 1, Month.SEPTEMBER, 1).atStartOfDay(),
+				endDate.atTime(23, 59, 59));
+	}
+
+	private SemesterRange getLastSemesterRange(LocalDateTime now) {
+		Month month = now.getMonth();
+		int year = now.getYear();
+		if (month.getValue() >= Month.MARCH.getValue() && month.getValue() <= Month.AUGUST.getValue()) {
+			LocalDate endDate = LocalDate.of(year, Month.FEBRUARY,
+					LocalDate.of(year, Month.FEBRUARY, 1).lengthOfMonth());
+			return new SemesterRange(
+					LocalDate.of(year - 1, Month.SEPTEMBER, 1).atStartOfDay(),
+					endDate.atTime(23, 59, 59));
+		}
+
+		if (month.getValue() >= Month.SEPTEMBER.getValue()) {
+			return new SemesterRange(
+					LocalDate.of(year, Month.MARCH, 1).atStartOfDay(),
+					LocalDate.of(year, Month.AUGUST, 31).atTime(23, 59, 59));
+		}
+
+		return new SemesterRange(
+				LocalDate.of(year - 1, Month.MARCH, 1).atStartOfDay(),
+				LocalDate.of(year - 1, Month.AUGUST, 31).atTime(23, 59, 59));
+	}
+
+	private static class SemesterRange {
+		private final LocalDateTime startAt;
+		private final LocalDateTime endAt;
+
+		public SemesterRange(LocalDateTime startAt, LocalDateTime endAt) {
+			this.startAt = startAt;
+			this.endAt = endAt;
+		}
+
+		public LocalDateTime startAt() {
+			return startAt;
+		}
+
+		public LocalDateTime endAt() {
+			return endAt;
 		}
 	}
 
@@ -355,6 +564,6 @@ public class PortfolioService {
 	 */
 	private Portfolio findActivePortfolio(Long portfolioId) {
 		return portfolioRepository.findByIdAndIsDeletedFalse(portfolioId)
-			.orElseThrow(() -> new CustomException(ErrorCode.PORTFOLIO_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.PORTFOLIO_NOT_FOUND));
 	}
 }

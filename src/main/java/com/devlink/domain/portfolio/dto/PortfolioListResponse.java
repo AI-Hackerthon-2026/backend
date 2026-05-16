@@ -36,30 +36,45 @@ public class PortfolioListResponse {
 	/** 참여자 수 (작성자 포함) */
 	private int participantCount;
 
+	private String githubLink;
+	private String deploymentLink;
+	private boolean isLiked;
+
 	private LocalDate startDate;
 	private LocalDate endDate;
 	private LocalDateTime createdAt;
 
 	public static PortfolioListResponse from(
-		Portfolio portfolio,
-		List<PortfolioSkill> portfolioSkills,
-		List<PortfolioParticipant> participants) {
+			Portfolio portfolio,
+			List<PortfolioSkill> portfolioSkills,
+			List<PortfolioParticipant> participants) {
+		return from(portfolio, portfolioSkills, participants, false);
+	}
+
+	public static PortfolioListResponse from(
+			Portfolio portfolio,
+			List<PortfolioSkill> portfolioSkills,
+			List<PortfolioParticipant> participants,
+			boolean isLiked) {
 
 		return PortfolioListResponse.builder()
-			.id(portfolio.getId())
-			.projectName(portfolio.getProjectName())
-			.category(portfolio.getCategory())
-			.summary(portfolio.getSummary())
-			.thumbnailUrl(portfolio.getThumbnailUrl())
-			.likeCount(portfolio.getLikeCount())
-			.skills(portfolioSkills.stream()
-				.map(ps -> ps.getSkill().getName())
-				.toList())
-			.authorName(portfolio.getUser().getName())
-			.participantCount(participants.size())
-			.startDate(portfolio.getStartDate())
-			.endDate(portfolio.getEndDate())
-			.createdAt(portfolio.getCreatedAt())
-			.build();
+				.id(portfolio.getId())
+				.projectName(portfolio.getProjectName())
+				.category(portfolio.getCategory())
+				.summary(portfolio.getSummary())
+				.thumbnailUrl(portfolio.getThumbnailUrl())
+				.likeCount(portfolio.getLikeCount())
+				.skills(portfolioSkills.stream()
+						.map(ps -> ps.getSkill().getName())
+						.toList())
+				.authorName(portfolio.getUser().getName())
+				.participantCount(participants.size())
+				.githubLink(portfolio.getGithubLink())
+				.deploymentLink(portfolio.getDeploymentLink())
+				.isLiked(isLiked)
+				.startDate(portfolio.getStartDate())
+				.endDate(portfolio.getEndDate())
+				.createdAt(portfolio.getCreatedAt())
+				.build();
 	}
 }

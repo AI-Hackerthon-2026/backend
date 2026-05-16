@@ -5,6 +5,7 @@ import com.devlink.domain.user.dto.UserSearchResponse;
 import com.devlink.domain.user.dto.UserUpdateRequest;
 import com.devlink.domain.user.entity.User;
 import com.devlink.domain.user.repository.UserRepository;
+import com.devlink.global.common.ValidationUtils;
 import com.devlink.global.exception.CustomException;
 import com.devlink.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,10 @@ public class UserService {
 	 */
 	@Transactional
 	public UserProfileResponse updateMyProfile(Long userId, UserUpdateRequest request) {
+		if (request.getGithubLink() != null && !request.getGithubLink().isBlank()
+				&& !ValidationUtils.isValidGitHubLink(request.getGithubLink())) {
+			throw new CustomException(ErrorCode.INVALID_GITHUB_LINK_FORMAT);
+		}
 		User user = findUserById(userId);
 		user.updateProfile(request.getName(), request.getGrade(), request.getGithubLink());
 		return UserProfileResponse.from(user);
@@ -57,7 +62,7 @@ public class UserService {
 	 * 사용자 검색 (참여자 추가용)
 	 * 이름 또는 학번으로 LIKE 검색, 본인은 결과에서 제외
 	 *
-	 * @param q 검색어 (이름 또는 학번 일부)
+	 * @param q           검색어 (이름 또는 학번 일부)
 	 * @param requesterId 요청자 ID (결과에서 본인 제외)
 	 * @return 사용자 검색 결과 목록
 	 */
@@ -67,9 +72,9 @@ public class UserService {
 			throw new CustomException(ErrorCode.INVALID_INPUT);
 		}
 		return userRepository.searchByNameOrStudentId(q.trim(), requesterId)
-			.stream()
-			.map(UserSearchResponse::from)
-			.toList();
+				.stream()
+				.map(UserSearchResponse::from)
+				.toList();
 	}
 
 	/**
@@ -77,6 +82,6 @@ public class UserService {
 	 */
 	private User findUserById(Long userId) {
 		return userRepository.findById(userId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 	}
 }

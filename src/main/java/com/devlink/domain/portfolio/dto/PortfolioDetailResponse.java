@@ -32,7 +32,9 @@ public class PortfolioDetailResponse {
 	private String deploymentLink;
 	private int likeCount;
 	private List<String> skills;
+	private AuthorInfo author;
 	private List<ParticipantInfo> participants;
+	private int participantCount;
 	private LocalDate startDate;
 	private LocalDate endDate;
 	private LocalDateTime createdAt;
@@ -47,6 +49,17 @@ public class PortfolioDetailResponse {
 	private boolean isLiked;
 
 	/**
+	 * 작성자 정보 내부 DTO
+	 */
+	@Getter
+	@Builder
+	public static class AuthorInfo {
+		private Long id;
+		private String name;
+		private String studentId;
+	}
+
+	/**
 	 * 참여자 정보 내부 DTO
 	 */
 	@Getter
@@ -59,40 +72,46 @@ public class PortfolioDetailResponse {
 	}
 
 	public static PortfolioDetailResponse from(
-		Portfolio portfolio,
-		List<PortfolioSkill> portfolioSkills,
-		List<PortfolioParticipant> participants,
-		boolean canEdit,
-		boolean isOwner,
-		boolean isLiked) {
+			Portfolio portfolio,
+			List<PortfolioSkill> portfolioSkills,
+			List<PortfolioParticipant> participants,
+			boolean canEdit,
+			boolean isOwner,
+			boolean isLiked) {
 
 		return PortfolioDetailResponse.builder()
-			.id(portfolio.getId())
-			.projectName(portfolio.getProjectName())
-			.category(portfolio.getCategory())
-			.summary(portfolio.getSummary())
-			.description(portfolio.getDescription())
-			.thumbnailUrl(portfolio.getThumbnailUrl())
-			.githubLink(portfolio.getGithubLink())
-			.deploymentLink(portfolio.getDeploymentLink())
-			.likeCount(portfolio.getLikeCount())
-			.skills(portfolioSkills.stream()
-				.map(ps -> ps.getSkill().getName())
-				.toList())
-			.participants(participants.stream()
-				.map(p -> ParticipantInfo.builder()
-					.userId(p.getUser().getId())
-					.name(p.getUser().getName())
-					.role(p.getRole())
-					.isOwner(p.isOwner())
-					.build())
-				.toList())
-			.startDate(portfolio.getStartDate())
-			.endDate(portfolio.getEndDate())
-			.createdAt(portfolio.getCreatedAt())
-			.canEdit(canEdit)
-			.isOwner(isOwner)
-			.isLiked(isLiked)
-			.build();
+				.id(portfolio.getId())
+				.projectName(portfolio.getProjectName())
+				.category(portfolio.getCategory())
+				.summary(portfolio.getSummary())
+				.description(portfolio.getDescription())
+				.thumbnailUrl(portfolio.getThumbnailUrl())
+				.githubLink(portfolio.getGithubLink())
+				.deploymentLink(portfolio.getDeploymentLink())
+				.likeCount(portfolio.getLikeCount())
+				.skills(portfolioSkills.stream()
+						.map(ps -> ps.getSkill().getName())
+						.toList())
+				.author(AuthorInfo.builder()
+						.id(portfolio.getUser().getId())
+						.name(portfolio.getUser().getName())
+						.studentId(portfolio.getUser().getStudentId())
+						.build())
+				.participants(participants.stream()
+						.map(p -> ParticipantInfo.builder()
+								.userId(p.getUser().getId())
+								.name(p.getUser().getName())
+								.role(p.getRole())
+								.isOwner(p.isOwner())
+								.build())
+						.toList())
+				.participantCount(participants.size())
+				.startDate(portfolio.getStartDate())
+				.endDate(portfolio.getEndDate())
+				.createdAt(portfolio.getCreatedAt())
+				.canEdit(canEdit)
+				.isOwner(isOwner)
+				.isLiked(isLiked)
+				.build();
 	}
 }

@@ -26,6 +26,8 @@ public enum ErrorCode {
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
 	DUPLICATE_STUDENT_ID(HttpStatus.CONFLICT, "이미 사용 중인 학번입니다."),
 	DUPLICATE_PORTAL_ID(HttpStatus.CONFLICT, "이미 가입된 포털 아이디입니다."),
+	INVALID_GITHUB_LINK_FORMAT(HttpStatus.BAD_REQUEST, "올바른 GitHub 링크 형식을 입력해주세요."),
+	INVALID_URL_FORMAT(HttpStatus.BAD_REQUEST, "올바른 URL 형식을 입력해주세요."),
 
 	// ===== 포트폴리오 (Portfolio) =====
 	PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "포트폴리오를 찾을 수 없습니다."),

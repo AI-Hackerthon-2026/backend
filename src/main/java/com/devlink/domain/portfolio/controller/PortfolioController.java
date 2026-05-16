@@ -3,6 +3,7 @@ package com.devlink.domain.portfolio.controller;
 import com.devlink.domain.portfolio.dto.*;
 import com.devlink.domain.portfolio.service.PortfolioService;
 import com.devlink.global.common.ApiResponse;
+import com.devlink.global.common.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,13 +36,27 @@ public class PortfolioController {
 	 * category, skills 파라미터로 필터, sort로 정렬 (LATEST/LIKES)
 	 */
 	@GetMapping
-	@Operation(summary = "포트폴리오 목록 조회", description = "커테고리 및 기술스택 필터와 정렬을 적용하여 목록을 조회합니다.")
-	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getPortfolioList(
-		@RequestParam(required = false) String category,
-		@RequestParam(required = false) List<String> skills,
-		@RequestParam(required = false, defaultValue = "LATEST") String sort) {
+	@Operation(summary = "포트폴리오 목록 조회", description = "카테고리, 기술스택 필터와 페이지네이션을 적용하여 목록을 조회합니다.")
+	public ResponseEntity<ApiResponse<PageResponse<PortfolioListResponse>>> getPortfolioList(
+			@RequestParam(required = false) String category,
+			@RequestParam(required = false) String skills,
+			@RequestParam(required = false, defaultValue = "LATEST") String sort,
+			@RequestParam(required = false, defaultValue = "0") int page,
+			@RequestParam(required = false, defaultValue = "10") int size,
+			Authentication authentication) {
+		Long userId = authentication != null ? (Long) authentication.getPrincipal() : null;
 		return ResponseEntity.ok(
-			ApiResponse.success("포트폴리오 목록 조회 성공", portfolioService.getPortfolioList(category, skills, sort)));
+				ApiResponse.success("포트폴리오 목록 조회 성공",
+						portfolioService.getPortfolioList(category, skills, sort, page, size, userId)));
+	}
+
+	/**
+	 * 메인 배너 TOP 3 조회
+	 */
+	@GetMapping("/top")
+	@Operation(summary = "메인 배너 TOP 3", description = "기간별 TOP 1 포트폴리오를 조회합니다.")
+	public ResponseEntity<ApiResponse<List<PortfolioTopResponse>>> getTopPortfolios() {
+		return ResponseEntity.ok(ApiResponse.success("메인 TOP 포트폴리오 조회 성공", portfolioService.getTopPortfolios()));
 	}
 
 	/**
@@ -50,12 +65,12 @@ public class PortfolioController {
 	@PostMapping
 	@Operation(summary = "포트폴리오 작성", description = "새 포트폴리오를 등록합니다.")
 	public ResponseEntity<ApiResponse<PortfolioDetailResponse>> createPortfolio(
-		@RequestBody @Valid PortfolioCreateRequest request,
-		Authentication authentication) {
+			@RequestBody @Valid PortfolioCreateRequest request,
+			Authentication authentication) {
 		Long userId = (Long) authentication.getPrincipal();
 		PortfolioDetailResponse response = portfolioService.createPortfolio(request, userId);
 		return ResponseEntity.status(HttpStatus.CREATED)
-			.body(ApiResponse.success("포트폴리오 등록 완료", response));
+				.body(ApiResponse.success("포트폴리오 등록 완료", response));
 	}
 
 	/**
@@ -68,13 +83,15 @@ public class PortfolioController {
 	}
 
 	/**
-	 * 래넣킹 목록 조회 (공감 많은 순, 기간 필터 지원)
+	 * 랭킹 목록 조회 (공감 많은 순, 기간 필터 지원)
 	 */
 	@GetMapping("/ranking")
-	@Operation(summary = "래넣킹 목록", description = "공감 수 기준 래넣킹 목록을 조회합니다.")
+	@Operation(summary = "랭킹 목록", description = "공감 수 기준 랭킹 목록을 조회합니다.")
 	public ResponseEntity<ApiResponse<List<PortfolioListResponse>>> getRanking(
-		@RequestParam(required = false, defaultValue = "ALL_TIME") String period) {
-		return ResponseEntity.ok(ApiResponse.success("래넣킹 조회 성공", portfolioService.getRanking(period)));
+			@RequestParam(required = false, defaultValue = "ALL_TIME") String period,
+			Authentication authentication) {
+		Long userId = authentication != null ? (Long) authentication.getPrincipal() : null;
+		return ResponseEntity.ok(ApiResponse.success("랭킹 조회 성공", portfolioService.getRanking(period, userId)));
 	}
 
 	/**
@@ -83,12 +100,12 @@ public class PortfolioController {
 	@GetMapping("/{id}")
 	@Operation(summary = "포트폴리오 상세 조회", description = "포트폴리오 상세 정보를 조회합니다.")
 	public ResponseEntity<ApiResponse<PortfolioDetailResponse>> getPortfolioDetail(
-		@PathVariable Long id,
-		Authentication authentication) {
+			@PathVariable Long id,
+			Authentication authentication) {
 		/* 비로그인 사용자는 userId null */
 		Long userId = authentication != null ? (Long) authentication.getPrincipal() : null;
 		return ResponseEntity.ok(
-			ApiResponse.success("상세 조회 성공", portfolioService.getPortfolioDetail(id, userId)));
+				ApiResponse.success("상세 조회 성공", portfolioService.getPortfolioDetail(id, userId)));
 	}
 
 	/**
@@ -97,12 +114,12 @@ public class PortfolioController {
 	@PutMapping("/{id}")
 	@Operation(summary = "포트폴리오 수정", description = "수정 권한이 있는 참여자가 포트폴리오를 수정합니다.")
 	public ResponseEntity<ApiResponse<PortfolioDetailResponse>> updatePortfolio(
-		@PathVariable Long id,
-		@RequestBody @Valid PortfolioUpdateRequest request,
-		Authentication authentication) {
+			@PathVariable Long id,
+			@RequestBody @Valid PortfolioUpdateRequest request,
+			Authentication authentication) {
 		Long userId = (Long) authentication.getPrincipal();
 		return ResponseEntity.ok(
-			ApiResponse.success("포트폴리오 수정 완료", portfolioService.updatePortfolio(id, request, userId)));
+				ApiResponse.success("포트폴리오 수정 완료", portfolioService.updatePortfolio(id, request, userId)));
 	}
 
 	/**
@@ -111,8 +128,8 @@ public class PortfolioController {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "포트폴리오 삭제", description = "소유자만 포트폴리오를 삭제할 수 있습니다.")
 	public ResponseEntity<ApiResponse<Void>> deletePortfolio(
-		@PathVariable Long id,
-		Authentication authentication) {
+			@PathVariable Long id,
+			Authentication authentication) {
 		Long userId = (Long) authentication.getPrincipal();
 		portfolioService.deletePortfolio(id, userId);
 		return ResponseEntity.ok(ApiResponse.success("포트폴리오 삭제 완료"));
