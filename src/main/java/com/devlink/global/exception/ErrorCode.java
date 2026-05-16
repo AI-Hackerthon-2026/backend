@@ -38,6 +38,11 @@ public enum ErrorCode {
 	PARTICIPANT_REQUIRED(HttpStatus.BAD_REQUEST, "해당 카테고리는 참여자를 반드시 선택해야 합니다."),
 	AWARDS_NOT_FOUND(HttpStatus.NOT_FOUND, "시상 결과가 아직 발표되지 않았습니다."),
 
+	// ===== 이미지 (Image) =====
+	EMPTY_FILE(HttpStatus.BAD_REQUEST, "파일이 비어있습니다."),
+	INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "jpg, png, gif, webp 형식의 이미지만 업로드 가능합니다."),
+	FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다."),
+
 	// ===== 공통 =====
 	INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");

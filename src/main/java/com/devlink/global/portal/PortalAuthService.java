@@ -56,7 +56,6 @@ public class PortalAuthService {
 	public boolean authenticate(String portalId, String password) {
 		try {
 
-
 			Map<String, String> cookies = login(portalId, password);
 			/* 
 			 * user.md: 기본적으로 쿠키 3개 반환 시 성공이나,
