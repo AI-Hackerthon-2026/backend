@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -75,12 +76,12 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 	/** 전체 기간 랭킹 조회 */
 	List<Portfolio> findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc();
 
-	/** 특정 기간 랭킹 조회 */
-	List<Portfolio> findAllByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
-			LocalDateTime startAt, LocalDateTime endAt);
+	/** 특정 기간 랭킹 조회 (end_date 기준) */
+	List<Portfolio> findAllByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
+			LocalDate startDate, LocalDate endDate);
 
-	Optional<Portfolio> findTopByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
-			LocalDateTime startAt, LocalDateTime endAt);
+	Optional<Portfolio> findTopByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
+			LocalDate startDate, LocalDate endDate);
 
 	Optional<Portfolio> findTopByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc();
 

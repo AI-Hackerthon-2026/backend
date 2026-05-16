@@ -165,7 +165,7 @@ public class PortfolioService {
 		List<PortfolioTopResponse> topResponses = new ArrayList<>();
 
 		portfolioRepository
-				.findTopByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+				.findTopByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
 						currentSemester.startAt(), currentSemester.endAt())
 				.ifPresent(portfolio -> topResponses.add(
 						PortfolioTopResponse.from(portfolio,
@@ -173,7 +173,7 @@ public class PortfolioService {
 								"CURRENT_SEMESTER", "이번 학기")));
 
 		portfolioRepository
-				.findTopByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+				.findTopByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
 						lastSemester.startAt(), lastSemester.endAt())
 				.ifPresent(portfolio -> topResponses.add(
 						PortfolioTopResponse.from(portfolio,
@@ -204,12 +204,12 @@ public class PortfolioService {
 		if ("CURRENT_SEMESTER".equalsIgnoreCase(period)) {
 			SemesterRange currentSemester = getCurrentSemesterRange(now);
 			portfolios = portfolioRepository
-					.findAllByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+					.findAllByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
 							currentSemester.startAt(), currentSemester.endAt());
 		} else if ("LAST_SEMESTER".equalsIgnoreCase(period)) {
 			SemesterRange lastSemester = getLastSemesterRange(now);
 			portfolios = portfolioRepository
-					.findAllByIsDeletedFalseAndCreatedAtBetweenOrderByLikeCountDescCreatedAtDesc(
+					.findAllByIsDeletedFalseAndEndDateBetweenOrderByLikeCountDescCreatedAtDesc(
 							lastSemester.startAt(), lastSemester.endAt());
 		} else {
 			portfolios = portfolioRepository.findAllByIsDeletedFalseOrderByLikeCountDescCreatedAtDesc();
@@ -512,22 +512,22 @@ public class PortfolioService {
 		int year = now.getYear();
 		if (month.getValue() >= Month.MARCH.getValue() && month.getValue() <= Month.AUGUST.getValue()) {
 			return new SemesterRange(
-					LocalDate.of(year, Month.MARCH, 1).atStartOfDay(),
-					LocalDate.of(year, Month.AUGUST, 31).atTime(23, 59, 59));
+					LocalDate.of(year, Month.MARCH, 1),
+					LocalDate.of(year, Month.AUGUST, 31));
 		}
 
 		if (month.getValue() >= Month.SEPTEMBER.getValue()) {
 			LocalDate endDate = LocalDate.of(year + 1, Month.FEBRUARY,
 					LocalDate.of(year + 1, Month.FEBRUARY, 1).lengthOfMonth());
 			return new SemesterRange(
-					LocalDate.of(year, Month.SEPTEMBER, 1).atStartOfDay(),
-					endDate.atTime(23, 59, 59));
+					LocalDate.of(year, Month.SEPTEMBER, 1),
+					endDate);
 		}
 
 		LocalDate endDate = LocalDate.of(year, Month.FEBRUARY, LocalDate.of(year, Month.FEBRUARY, 1).lengthOfMonth());
 		return new SemesterRange(
-				LocalDate.of(year - 1, Month.SEPTEMBER, 1).atStartOfDay(),
-				endDate.atTime(23, 59, 59));
+				LocalDate.of(year - 1, Month.SEPTEMBER, 1),
+				endDate);
 	}
 
 	private SemesterRange getLastSemesterRange(LocalDateTime now) {
@@ -537,35 +537,35 @@ public class PortfolioService {
 			LocalDate endDate = LocalDate.of(year, Month.FEBRUARY,
 					LocalDate.of(year, Month.FEBRUARY, 1).lengthOfMonth());
 			return new SemesterRange(
-					LocalDate.of(year - 1, Month.SEPTEMBER, 1).atStartOfDay(),
-					endDate.atTime(23, 59, 59));
+					LocalDate.of(year - 1, Month.SEPTEMBER, 1),
+					endDate);
 		}
 
 		if (month.getValue() >= Month.SEPTEMBER.getValue()) {
 			return new SemesterRange(
-					LocalDate.of(year, Month.MARCH, 1).atStartOfDay(),
-					LocalDate.of(year, Month.AUGUST, 31).atTime(23, 59, 59));
+					LocalDate.of(year, Month.MARCH, 1),
+					LocalDate.of(year, Month.AUGUST, 31));
 		}
 
 		return new SemesterRange(
-				LocalDate.of(year - 1, Month.MARCH, 1).atStartOfDay(),
-				LocalDate.of(year - 1, Month.AUGUST, 31).atTime(23, 59, 59));
+				LocalDate.of(year - 1, Month.MARCH, 1),
+				LocalDate.of(year - 1, Month.AUGUST, 31));
 	}
 
 	private static class SemesterRange {
-		private final LocalDateTime startAt;
-		private final LocalDateTime endAt;
+		private final LocalDate startAt;
+		private final LocalDate endAt;
 
-		public SemesterRange(LocalDateTime startAt, LocalDateTime endAt) {
+		public SemesterRange(LocalDate startAt, LocalDate endAt) {
 			this.startAt = startAt;
 			this.endAt = endAt;
 		}
 
-		public LocalDateTime startAt() {
+		public LocalDate startAt() {
 			return startAt;
 		}
 
-		public LocalDateTime endAt() {
+		public LocalDate endAt() {
 			return endAt;
 		}
 	}

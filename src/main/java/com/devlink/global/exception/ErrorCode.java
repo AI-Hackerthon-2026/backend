@@ -43,6 +43,12 @@ public enum ErrorCode {
 	INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "jpg, png, gif, webp 형식의 이미지만 업로드 가능합니다."),
 	FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다."),
 
+	// ===== Q&A =====
+	QNA_NOT_FOUND(HttpStatus.NOT_FOUND, "질문을 찾을 수 없습니다."),
+	QNA_ACCESS_DENIED(HttpStatus.FORBIDDEN, "질문을 확인할 권한이 없습니다."),
+	QNA_DELETE_DENIED(HttpStatus.FORBIDDEN, "삭제 권한이 없습니다."),
+	QNA_ANSWER_DENIED(HttpStatus.FORBIDDEN, "답변 권한이 없습니다."),
+
 	// ===== 공통 =====
 	INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
