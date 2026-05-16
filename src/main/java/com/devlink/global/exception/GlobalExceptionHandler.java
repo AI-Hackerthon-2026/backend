@@ -56,6 +56,6 @@ public class GlobalExceptionHandler {
 		log.error("[서버 오류] {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
 		return ResponseEntity
 			.internalServerError()
-			.body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
+			.body(ApiResponse.fail("[DEBUG] " + e.getClass().getSimpleName() + ": " + e.getMessage()));
 	}
 }
