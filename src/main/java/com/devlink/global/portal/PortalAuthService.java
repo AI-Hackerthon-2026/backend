@@ -29,13 +29,17 @@ public class PortalAuthService {
 	private static final Logger log = LoggerFactory.getLogger(PortalAuthService.class);
 
 	@Value("${portal.main}")
-	private String portalMain;
+	private String PORTAL_MAIN;
 
 	@Value("${portal.sso.base}")
-	private String ssoBase;
+	private String SSO_BASE;
 
 	@Value("${portal.home}")
-	private String portalHome;
+	private String PORTAL_HOME;
+
+//	private static final String SSO_BASE    = "https://sso.gachon.ac.kr";
+//	private static final String PORTAL_MAIN = "https://portal.gachon.ac.kr/";
+//	private static final String PORTAL_HOME = "https://portal.gachon.ac.kr/p/S00/";
 
 	private static final String USER_AGENT =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
@@ -67,22 +71,20 @@ public class PortalAuthService {
 		}
 	}
 
-	/**
-	 * 포털 로그인 수행 및 쿠키 반환
-	 * user.md의 로직을 그대로 구현
-	 */
+
+
 	private Map<String, String> login(String portalId, String password) throws Exception {
 		Map<String, String> cookies = new HashMap<>();
 
 		// 1단계: 포털 접근 → SSO 리다이렉트
-		Connection.Response portalInitRes = Jsoup.connect(portalMain)
-			.userAgent(USER_AGENT)
-			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-			.header("Accept-Language", "ko-KR,ko;q=0.9")
-			.ignoreHttpErrors(true)
-			.followRedirects(true)
-			.timeout(10000)
-			.execute();
+		Connection.Response portalInitRes = Jsoup.connect(PORTAL_MAIN)
+				.userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
+				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+				.header("Accept-Language", "ko-KR,ko;q=0.9")
+				.ignoreHttpErrors(true)
+				.followRedirects(true)
+				.timeout(10000)
+				.execute();
 
 		cookies.putAll(portalInitRes.cookies());
 
@@ -90,8 +92,8 @@ public class PortalAuthService {
 
 		String ssoLoginUrl = portalInitRes.url().toString();
 
-		Document ssoDoc = portalInitRes.parse();
-		Element loginForm = null;
+		Document ssoDoc   = portalInitRes.parse();
+		Element  loginForm = null;
 
 		for (Element form : ssoDoc.select("form")) {
 			if (!form.select("input[name=c_token]").isEmpty()) {
@@ -99,47 +101,33 @@ public class PortalAuthService {
 				break;
 			}
 		}
-		
-		if (loginForm == null) {
-			log.error("[인증오류] c_token 폼을 찾을 수 없음. ssoLoginUrl={}", ssoLoginUrl);
-			return null;
-		}
+		if (loginForm == null) return null;
 
 		String formAction = loginForm.attr("action");
-		if (formAction.startsWith("/")) formAction = ssoBase + formAction;
+		if (formAction.startsWith("/")) formAction = SSO_BASE + formAction;
 
 		String lToken = loginForm.select("input[name=l_token]").attr("value");
 		String cToken = loginForm.select("input[name=c_token]").attr("value");
 
 		// 2단계: 로그인 POST
 		Connection.Response loginRes = Jsoup.connect(formAction)
-			.userAgent(USER_AGENT)
-			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-			.header("Accept-Language", "ko-KR,ko;q=0.9")
-			.referrer(ssoLoginUrl)
-			.cookies(cookies)
-			.data("l_token", lToken)
-			.data("c_token", cToken)
-			.data("user_timezone_offset", "-540")
-			.data("user_id", portalId)
-			.data("user_password", password)
-			.method(Connection.Method.POST)
-			.ignoreHttpErrors(true)
-			.followRedirects(false)
-			.timeout(10000)
-			.execute();
+				.userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
+				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+				.header("Accept-Language", "ko-KR,ko;q=0.9")
+				.referrer(ssoLoginUrl)
+				.cookies(cookies)
+				.data("l_token", lToken)
+				.data("c_token", cToken)
+				.data("user_timezone_offset", "-540")
+				.data("user_id", portalId)
+				.data("user_password", password)
+				.method(Connection.Method.POST)
+				.ignoreHttpErrors(true)
+				.followRedirects(false)
+				.timeout(10000)
+				.execute();
 
 		cookies.putAll(loginRes.cookies());
-
-		if (loginRes.statusCode() == 200 && loginRes.header("Location") == null) {
-			if (loginRes.body().contains("exPassword")) {
-				log.warn("[인증성공-예외] 비밀번호 변경 권고 페이지 감지. ID/PW는 일치하므로 인증 성공으로 간주합니다.");
-				cookies.put("PASS_EXPIRED_SUCCESS", "true");
-				return cookies; // 여기서 즉시 종료하여 성공 처리
-			}
-			log.warn("[인증경고] POST 리다이렉트가 아님(200 OK). 바디 일부: {}", 
-				loginRes.body().length() > 500 ? loginRes.body().substring(0, 500) : loginRes.body());
-		}
 
 		// 3단계: 리다이렉트 체인 추적
 		String nextUrl = loginRes.header("Location");
@@ -154,15 +142,15 @@ public class PortalAuthService {
 			}
 
 			lastRes = Jsoup.connect(nextUrl)
-				.userAgent(USER_AGENT)
-				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-				.header("Accept-Language", "ko-KR,ko;q=0.9")
-				.referrer(lastRes.url().toString())
-				.cookies(cookies)
-				.ignoreHttpErrors(true)
-				.followRedirects(false)
-				.timeout(10000)
-				.execute();
+					.userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
+					.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+					.header("Accept-Language", "ko-KR,ko;q=0.9")
+					.referrer(lastRes.url().toString())
+					.cookies(cookies)
+					.ignoreHttpErrors(true)
+					.followRedirects(false)
+					.timeout(10000)
+					.execute();
 
 			cookies.putAll(lastRes.cookies());
 			nextUrl = lastRes.header("Location");
@@ -172,24 +160,147 @@ public class PortalAuthService {
 		}
 
 		// 4단계: 포털 홈 접근 확인
-		Connection.Response homeRes = Jsoup.connect(portalHome)
-			.userAgent(USER_AGENT)
-			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-			.header("Accept-Language", "ko-KR,ko;q=0.9")
-			.referrer(portalMain)
-			.cookies(cookies)
-			.ignoreHttpErrors(true)
-			.followRedirects(true)
-			.timeout(15000)
-			.execute();
+		Connection.Response homeRes = Jsoup.connect(PORTAL_HOME)
+				.userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
+				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+				.header("Accept-Language", "ko-KR,ko;q=0.9")
+				.referrer(PORTAL_MAIN)
+				.cookies(cookies)
+				.ignoreHttpErrors(true)
+				.followRedirects(true)
+				.timeout(15000)
+				.execute();
 
 		cookies.putAll(homeRes.cookies());
 
-		if (!homeRes.url().toString().contains("portal.gachon.ac.kr/p/")) {
-			log.error("[인증오류] 포털 홈 도달 실패. 최종 url={}", homeRes.url());
-			return null;
-		}
+		if (!homeRes.url().toString().contains("portal.gachon.ac.kr/p/")) return null;
 
 		return cookies;
 	}
+
+	/**
+	 * 포털 로그인 수행 및 쿠키 반환
+	 * user.md의 로직을 그대로 구현
+//	 */
+//	private Map<String, String> login(String portalId, String password) throws Exception {
+//		Map<String, String> cookies = new HashMap<>();
+//
+//		// 1단계: 포털 접근 → SSO 리다이렉트
+//		Connection.Response portalInitRes = Jsoup.connect(portalMain)
+//			.userAgent(USER_AGENT)
+//			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+//			.header("Accept-Language", "ko-KR,ko;q=0.9")
+//			.ignoreHttpErrors(true)
+//			.followRedirects(true)
+//			.timeout(10000)
+//			.execute();
+//
+//		cookies.putAll(portalInitRes.cookies());
+//
+//		Thread.sleep(500);
+//
+//		String ssoLoginUrl = portalInitRes.url().toString();
+//
+//		Document ssoDoc = portalInitRes.parse();
+//		Element loginForm = null;
+//
+//		for (Element form : ssoDoc.select("form")) {
+//			if (!form.select("input[name=c_token]").isEmpty()) {
+//				loginForm = form;
+//				break;
+//			}
+//		}
+//
+//		if (loginForm == null) {
+//			log.error("[인증오류] c_token 폼을 찾을 수 없음. ssoLoginUrl={}", ssoLoginUrl);
+//			return null;
+//		}
+//
+//		String formAction = loginForm.attr("action");
+//		if (formAction.startsWith("/")) formAction = ssoBase + formAction;
+//
+//		String lToken = loginForm.select("input[name=l_token]").attr("value");
+//		String cToken = loginForm.select("input[name=c_token]").attr("value");
+//
+//		// 2단계: 로그인 POST
+//		Connection.Response loginRes = Jsoup.connect(formAction)
+//			.userAgent(USER_AGENT)
+//			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+//			.header("Accept-Language", "ko-KR,ko;q=0.9")
+//			.referrer(ssoLoginUrl)
+//			.cookies(cookies)
+//			.data("l_token", lToken)
+//			.data("c_token", cToken)
+//			.data("user_timezone_offset", "-540")
+//			.data("user_id", portalId)
+//			.data("user_password", password)
+//			.method(Connection.Method.POST)
+//			.ignoreHttpErrors(true)
+//			.followRedirects(false)
+//			.timeout(10000)
+//			.execute();
+//
+//		cookies.putAll(loginRes.cookies());
+//
+//		if (loginRes.statusCode() == 200 && loginRes.header("Location") == null) {
+//			if (loginRes.body().contains("exPassword")) {
+//				log.warn("[인증성공-예외] 비밀번호 변경 권고 페이지 감지. ID/PW는 일치하므로 인증 성공으로 간주합니다.");
+//				cookies.put("PASS_EXPIRED_SUCCESS", "true");
+//				return cookies; // 여기서 즉시 종료하여 성공 처리
+//			}
+//			log.warn("[인증경고] POST 리다이렉트가 아님(200 OK). 바디 일부: {}",
+//				loginRes.body().length() > 500 ? loginRes.body().substring(0, 500) : loginRes.body());
+//		}
+//
+//		// 3단계: 리다이렉트 체인 추적
+//		String nextUrl = loginRes.header("Location");
+//		Connection.Response lastRes = loginRes;
+//		int count = 0;
+//
+//		while (nextUrl != null && !nextUrl.isEmpty() && count < 10) {
+//			if (nextUrl.startsWith("/")) {
+//				String base = lastRes.url().toString();
+//				String host = base.substring(0, base.indexOf("/", 8));
+//				nextUrl = host + nextUrl;
+//			}
+//
+//			lastRes = Jsoup.connect(nextUrl)
+//				.userAgent(USER_AGENT)
+//				.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+//				.header("Accept-Language", "ko-KR,ko;q=0.9")
+//				.referrer(lastRes.url().toString())
+//				.cookies(cookies)
+//				.ignoreHttpErrors(true)
+//				.followRedirects(false)
+//				.timeout(10000)
+//				.execute();
+//
+//			cookies.putAll(lastRes.cookies());
+//			nextUrl = lastRes.header("Location");
+//
+//			if (lastRes.url().toString().contains("portal.gachon.ac.kr/p/")) break;
+//			count++;
+//		}
+//
+//		// 4단계: 포털 홈 접근 확인
+//		Connection.Response homeRes = Jsoup.connect(portalHome)
+//			.userAgent(USER_AGENT)
+//			.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+//			.header("Accept-Language", "ko-KR,ko;q=0.9")
+//			.referrer(portalMain)
+//			.cookies(cookies)
+//			.ignoreHttpErrors(true)
+//			.followRedirects(true)
+//			.timeout(15000)
+//			.execute();
+//
+//		cookies.putAll(homeRes.cookies());
+//
+//		if (!homeRes.url().toString().contains("portal.gachon.ac.kr/p/")) {
+//			log.error("[인증오류] 포털 홈 도달 실패. 최종 url={}", homeRes.url());
+//			return null;
+//		}
+//
+//		return cookies;
+//	}
 }
