@@ -63,7 +63,6 @@
 
 ```
 http://localhost:8080/swagger-ui.html
-http://34.158.219.4/swagger-ui.html
 ```
 
 ---
@@ -80,16 +79,6 @@ http://34.158.219.4/swagger-ui.html
 JAVA_HOME=/path/to/java-21 ./gradlew bootRun
 ```
 
-### 환경 설정 (`src/main/resources/application.properties`)
-```properties
-spring.datasource.url=jdbc:postgresql://HOST:5432/devlink
-spring.datasource.username=YOUR_USERNAME
-spring.datasource.password=YOUR_PASSWORD
-
-portal.main=https://portal.gachon.ac.kr/
-portal.sso.base=https://sso.gachon.ac.kr
-portal.home=https://portal.gachon.ac.kr/p/S00/
-```
 
 ---
 
